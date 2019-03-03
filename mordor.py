@@ -52,7 +52,7 @@ class AppConfig(object):
     @property
     def config(self):
         # config files need to copied over
-        return self.app_config["config"]
+        return self.app_config.get("config", {})
     
     @property
     def deploy_to(self):
@@ -152,6 +152,7 @@ def stage_app(base_dir, config, app_name):
         stage_app_on_host(base_dir, config, app, host, archive_filename)
     
 def stage_app_on_host(base_dir, config, app, host, archive_filename):
+    print("stage application \"{}\" on host \"{}\"".format(app.name, host.name))
     # copy app archive to remote host
     host.upload(archive_filename, host.path("temp", app.archive_filename))
 
