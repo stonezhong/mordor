@@ -1,6 +1,6 @@
 # Purpose #
 
-If you have python based application, need to deploy to a fleet of machines and need to constantly update these application, mordor is the right tool for you. If can
+If you have python based application, need to deploy to a fleet of machines and need to constantly update these application, mordor is the right tool for you. You can
 
 * Deploy your python application to the host fleet
 * Start and stop your python application on the fleet
@@ -61,7 +61,7 @@ On host of your fleet,
 
 ## Initialization ##
 Run `mordor.py -a init_host --host_name <hostname>` to initialize your host. The host only need to be initialized once normally.
-Here is a layour of your host directory structure:
+Here is a layout of your host directory structure:
 ```
 <Mordor Home Directory>
   |
@@ -106,10 +106,11 @@ You can run command `mordor.py -a stage --app_name <application_name>` to stage 
 }
 ```
 The version tells the version of the app, 
-* On each deployable host, app's code will be copied over to `apps/<application_name>` directory
-* On each deployable host, virtualenv will b created, all required package will be installed.
-    * it looks for requirements.txt for packages to install
-    * on host, virtual env is a `venvs/<application_name>-<application_version>`
+* On each deployable host, app's code will be copied over to `apps/<application_name>/<version>` directory
+    * A sym link will be crate, so you can use `app/<application_name>/current/` as the current version
+* On each deployable host, virtualenv will be created, all required package will be installed.
+    * it looks for `requirements.txt` in your application directory for packages to install
+    * on host, virtual env is a `venvs/<application_name>-<version>`
     * a symlink will be created in `venvs/<application_name>`
 * All the config file will also be copied over
     * config file should be stored at `~/.mordor/configs/<application_name>`
