@@ -30,7 +30,17 @@ class HostConfig(object):
         new_args = ["ssh", remote_hostname]
         new_args.extend(args)
         subprocess.call(new_args)
-    
+
+    # execute, wait for finish and get the output
+    def execute2(self, *args):
+        remote_hostname = self.host_config["ssh_host"]        
+        new_args = ["ssh", remote_hostname]
+        new_args.extend(args)
+        p = subprocess.Popen(new_args, stdout=subprocess.PIPE)
+        (output, err) = p.communicate()
+        p_status = p.wait()
+        return (output, err)
+
     def upload(self, local_path, remote_path):
         remote_hostname = self.host_config["ssh_host"]        
         subprocess.call([
@@ -128,20 +138,22 @@ def init_host(base_dir, config, host_name):
     ]:
         host.execute("mkdir", "-vp", dir)
 
-    host.upload(
-        os.path.join(base_dir, "bin", "install_packages.sh"),
-        host.path("bin", "install_packages.sh")
-    )
-    host.upload(
-        os.path.join(base_dir, "bin", "run_app.sh"),
-        host.path("bin", "run_app.sh")
-    )
+    cmds = [
+        "install_packages.sh",
+        "run_app.sh",
+        "get_app_status.sh",
+        "kill_app.sh",
+    ]
+    for cmd in cmds:
+        host.upload(
+            os.path.join(base_dir, "bin", cmd),
+            host.path("bin", cmd)
+        )
+        host.execute("chmod", "+x", host.path("bin", cmd))
 
-    host.execute("chmod", "+x", host.path("bin", "install_packages.sh"))
-    host.execute("chmod", "+x", host.path("bin", "run_app.sh"))
 
 # stage an python application on the target host
-def stage_app(base_dir, config, app_name):
+def stage_app(base_dir, config, app_name, update_venv):
     app = config.get_app(app_name)
 
     # archive the entire app and send it to host
@@ -149,9 +161,9 @@ def stage_app(base_dir, config, app_name):
     archive_filename = app.create_archive()
     for host_name in app.deploy_to:
         host = config.get_host(host_name)
-        stage_app_on_host(base_dir, config, app, host, archive_filename)
+        stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv)
     
-def stage_app_on_host(base_dir, config, app, host, archive_filename):
+def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv):
     print("stage application \"{}\" on host \"{}\"".format(app.name, host.name))
     # copy app archive to remote host
     host.upload(archive_filename, host.path("temp", app.archive_filename))
@@ -182,20 +194,21 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename):
     )
 
     # recreate venv since dependencies may have changed
-    host.execute("rm", "-rf", host.path("venvs", app.venv_name))
-    host.execute(host.virtualenv, host.path("venvs", app.venv_name))
-    host.execute(
-        host.path("bin", "install_packages.sh"), 
-        host.home_dir,
-        app.name,
-        app.manifest.version
-    )
-    # create a symlink
-    host.execute("rm", "-f", host.path("venvs", app.name))
-    host.execute("ln", "-s", 
-        host.path("venvs", app.venv_name),
-        host.path("venvs", app.name)
-    )
+    if update_venv:
+        host.execute("rm", "-rf", host.path("venvs", app.venv_name))
+        host.execute(host.virtualenv, host.path("venvs", app.venv_name))
+        host.execute(
+            host.path("bin", "install_packages.sh"), 
+            host.home_dir,
+            app.name,
+            app.manifest.version
+        )
+        # create a symlink
+        host.execute("rm", "-f", host.path("venvs", app.name))
+        host.execute("ln", "-s", 
+            host.path("venvs", app.venv_name),
+            host.path("venvs", app.name)
+        )
 
     for (filename, deploy_type) in app.config.items():
         if deploy_type == "copy":
@@ -225,27 +238,63 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename):
             continue
     return
 
-
-
 def run_app(base_dir, config, app_name):
     app = config.get_app(app_name)
+    print("running application \"{}\"".format(app.name))
     for host_name in app.deploy_to:
         host = config.get_host(host_name)
         run_app_on_host(base_dir, config, app, host)
 
 def run_app_on_host(base_dir, config, app, host):
-    print("running application \"{}\" on host \"{}\"".format(app.name, host.name))
+    print("    {}".format(host.name))
     host.execute(
         host.path("bin", "run_app.sh"),
         host.home_dir,
         app.name
     )
 
+def kill_app(base_dir, config, app_name):
+    app = config.get_app(app_name)
+    print("killing application \"{}\"".format(app.name))
+    for host_name in app.deploy_to:
+        host = config.get_host(host_name)
+        kill_app_on_host(base_dir, config, app, host)
+
+def kill_app_on_host(base_dir, config, app, host):
+    print("    {}".format(host.name))
+    host.execute(
+        host.path("bin", "kill_app.sh"),
+        host.home_dir,
+        app.name
+    )
+
+def get_app_status(base_dir, config, app_name):
+    app = config.get_app(app_name)
+    print("status of application \"{}\"".format(app.name))
+    for host_name in app.deploy_to:
+        host = config.get_host(host_name)
+        get_app_status_on_host(base_dir, config, app, host)
+
+def get_app_status_on_host(base_dir, config, app, host):
+    output, err = host.execute2(
+        host.path("bin", "get_app_status.sh"),
+        host.home_dir,
+        app.name
+    )
+    print('    {}: {}'.format(host.name, output))
+
 def main():
     parser = argparse.ArgumentParser(description='Mordor deployment tool for python')
     parser.add_argument("-a", "--action",    type=str, required=True, help="action")
     parser.add_argument("-o", "--host_name", type=str, required=False, help="destination host")
     parser.add_argument("-p", "--app_name",  type=str, required=False, help="application name")
+    parser.add_argument(
+        "--update_venv",  
+        type=str, 
+        required=False, 
+        default="T", 
+        help="Should I update virtual env?"
+    )
     args = parser.parse_args()
 
     base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -264,13 +313,21 @@ def main():
         if not args.app_name:
             print("--app_name must be specified")
             return
-        stage_app(base_dir, config, args.app_name)
+        stage_app(base_dir, config, args.app_name, args.update_venv == 'T')
         return
     
     if args.action == "run":
         run_app(base_dir, config, args.app_name)
         return
-    
+
+    if args.action == "kill":
+        kill_app(base_dir, config, args.app_name)
+        return
+
+    if args.action == "status":
+        get_app_status(base_dir, config, args.app_name)
+        return
+
     raise Exception("unrecognized action")
 
 if __name__ == '__main__':
