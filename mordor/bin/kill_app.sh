@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # $1: mordor home dir
 # $2: app name

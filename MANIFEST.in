@@ -1,0 +1,2 @@
+recursive-include mordor/bin
+include README.md
