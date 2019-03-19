@@ -22,6 +22,10 @@ class HostConfig(object):
     def virtualenv(self):
         return self.host_config["virtualenv"]
 
+    @property
+    def python3(self):
+        return self.host_config.get("python3")
+
     def path(self, *args):
         return os.path.join(self.home_dir, *args)
             
@@ -58,7 +62,11 @@ class AppConfig(object):
     @property
     def home_dir(self):
         return self.app_config["home_dir"]
-    
+
+    @property
+    def use_python3(self):
+        return self.app_config.get("use_python3", False)
+
     @property
     def config(self):
         # config files need to copied over
@@ -196,7 +204,10 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     # recreate venv since dependencies may have changed
     if update_venv:
         host.execute("rm", "-rf", host.path("venvs", app.venv_name))
-        host.execute(host.virtualenv, host.path("venvs", app.venv_name))
+        if app.use_python3:
+            host.execute(host.virtualenv, "-p", host.python3, host.path("venvs", app.venv_name))
+        else:
+            host.execute(host.virtualenv, host.path("venvs", app.venv_name))
         host.execute(
             host.path("bin", "install_packages.sh"), 
             host.home_dir,

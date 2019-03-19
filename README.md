@@ -1,4 +1,4 @@
-# Purpose #
+# Purpose
 
 If you have python based application, need to deploy to a fleet of machines and need to constantly update these application, mordor is the right tool for you. You can
 
@@ -6,60 +6,83 @@ If you have python based application, need to deploy to a fleet of machines and 
 * Start and stop your python application on the fleet
 * Update your python application on the fleet.
 
-# config #
+# config
 You need to have a local config file placed in `~/.mordor/config.json`. Here is an example:
 ```
 {
     "hosts": {
         "localhost": {
-            "ssh_host": "localhost",
-            "home_dir": "/Users/shizhong/mordor",
-            "virtualenv": "/usr/local/bin/virtualenv"
+            "ssh_host"  : "localhost",
+            "home_dir"  : "/Users/shizhong/mordor",
+            "virtualenv": "/usr/local/bin/virtualenv",
+            "python3"   : "/usr/local/bin/python3"
         },
         "mylinux": {
-            "ssh_host": "mylinux",
-            "home_dir": "/home/SHIZHONG/mordor",
-            "virtualenv": "/usr/bin/virtualenv"
+            "ssh_host"  : "mylinux",
+            "home_dir"  : "/home/SHIZHONG/mordor",
+            "virtualenv": "/usr/bin/virtualenv",
+            "python3"   : "/usr/bin/python3"
         }
     },
     "applications": {
         "sample": {
-            "home_dir"  : "/Users/shizhong/projects/sample",
-            "deploy_to" : [ "mylinux", "localhost" ],
-            "config": {
-                "config": "convert",
+            "home_dir"    : "/Users/shizhong/projects/sample",
+            "deploy_to"   : [ "mylinux", "localhost" ],
+            "use_python3" : true,
+            "config"      : {
+                "config"         : "convert",
                 "oci_api_key.pem": "copy"
             }
         }
     }
 }
 ```
-It means:
-* You have a host called localhost
-    * Mordor home directory is `/Users/shizhong/mordor`
-    * virtualenv command is at `/usr/local/bin/virtualenv` (it is a macbook)
-    * `ssh_host` field tells the hostname you use in ssh, you can config it in `~/.ssh/config`
-* You have a host called mylinux
-    * Mordor home directory is `/Users/SHIZHONG/mordor`
-    * virtualenv command is at `/usr/bin/virtualenv` (it is a Oracle Linux)
-    * `ssh_host` field tells the hostname you use in ssh, you can config it in `~/.ssh/config`
-* You have an application called `sample`
-    * Your application code is at `/Users/shizhong/projects/sample` on your machine
-    * This application will be deployed to `mylinux` and `localhost` (2 machines)
-    * config file `~/.mordor/config/sample/config` will be copied to target machine at `configs/sample/config`
-        * You can use variable in this file, variable will be replaced
-    * config file `~/.mordor/config/sample/oci_api_key.pem` will be coped to target machine at `configs/sample/oci_api_key.pem`
 
-# Host overview #
-You need to config ssh so you do not need to enter password when you ssh to host on your fleet.
+## Host Config
 
-## Before initialization ##
+* In "hosts", key is host name, value is host config
+
+### ssh_host
+You should be able to ssh to the target host using their ssh_host attribute as host name without entering password.
+You may need to use `ssh-add` command and config your `~/.ssh/config`
+
+### home_dir
+This specify the home directory for mordor.
+
+### virtualenv
+This specify the full path for virtualenv command
+
+### python3
+This specify the full path for python3. You do not need to have this attribute if you do not plan to use python3.
+
+## Application configs
+
+* In applications. key is application name, value is application config
+
+### home_dir
+This specify where is the application's home directory.
+
+### deploy_to
+This is an array, tells list of host the application will deploy to.
+
+### use_python3
+If true, then this application uses python3. Default is false
+
+
+# Host 
+Before a host become usable for mordor, you need to
+* Add host config to your `~/.mordor/config.json`
+* Run `mordor -a init_host --host_name <hostname>` to initialize your host
+
+## Before initialization
 On host of your fleet, 
 * You need to make sure python 2.x is installed. For most of the Linux dist and mac, this is true.
+* If you need to deploy application that uses python3 on this host, you need to install python3
+  * And set python3 in host config  
 * You need to install virtualenv and pip.
 * You need to add entry in hosts sections for every machine you managed.
 
-## Initialization ##
+## Initialization
 Run `mordor.py -a init_host --host_name <hostname>` to initialize your host. The host only need to be initialized once normally.
 Here is a layout of your host directory structure:
 ```
@@ -96,7 +119,7 @@ Here is a layout of your host directory structure:
   +-- temp                                  Temporary directory
 ```
 
-# Stage #
+# Stage Your Application
 You can run command `mordor.py -a stage --app_name <application_name>` to stage application to all the host the app is suppose to deploy
 * In `config.json`, the `deploy_to` tells the list of host it will deploy to
 * In application's home directory, there is a file `manifest.json`, it looks like below
@@ -117,10 +140,10 @@ The version tells the version of the app,
     * the `config` section of application in `config.json` will tell what file need to be copied over
     * `copy` means simply copy over, `convert` means you can use variable like `home_dir` and `app_name` in your config file.
 
-# run #
+# run
 You can run `mordor.py -a run --app_name <application_name>` to run the application, all host deployed will run your application
 
-# Application #
+# Application Requirement
 * You need to put a file `requirements.txt` to tell your applications dependency
 * You need to provide a `run.sh` command, this command will be called to launch your program
 
