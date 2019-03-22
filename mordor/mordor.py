@@ -289,10 +289,12 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
             continue
     return
 
-def run_app(base_dir, config, app_name):
+def run_app(base_dir, config, app_name, desired_host_name):
     app = config.get_app(app_name)
     print("running application \"{}\"".format(app.name))
     for host_name in app.deploy_to:
+        if desired_host_name and desired_host_name != host_name:
+            continue
         host = config.get_host(host_name)
         run_app_on_host(base_dir, config, app, host)
 
@@ -368,7 +370,7 @@ def main():
         return
     
     if args.action == "run":
-        run_app(base_dir, config, args.app_name)
+        run_app(base_dir, config, args.app_name, args.host_name)
         return
 
     if args.action == "kill":
