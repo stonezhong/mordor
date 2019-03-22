@@ -17,6 +17,10 @@ class HostConfig(object):
     @property
     def home_dir(self):
         return self.host_config["home_dir"]
+    
+    @property
+    def ssh_host(self):
+        return self.host_config["ssh_host"]
         
     @property
     def virtualenv(self):
@@ -25,20 +29,45 @@ class HostConfig(object):
     @property
     def python3(self):
         return self.host_config.get("python3")
+    
+    @property
+    def ssh_key_filename(self):
+        v = self.host_config.get("ssh_key_filename")
+        if not v:
+            return v
+        return os.path.expanduser(v)
+
+    @property
+    def ssh_username(self):
+        return self.host_config.get("ssh_username")
 
     def path(self, *args):
         return os.path.join(self.home_dir, *args)
             
     def execute(self, *args):
-        remote_hostname = self.host_config["ssh_host"]        
-        new_args = ["ssh", remote_hostname]
+        if self.ssh_key_filename:        
+            new_args = [
+                "ssh", 
+                "-i", 
+                self.ssh_key_filename, 
+                "{}@{}".format(self.ssh_username, self.ssh_host)
+            ]
+        else:
+            new_args = ["ssh", self.ssh_host]
         new_args.extend(args)
         subprocess.call(new_args)
 
     # execute, wait for finish and get the output
     def execute2(self, *args):
-        remote_hostname = self.host_config["ssh_host"]        
-        new_args = ["ssh", remote_hostname]
+        if self.ssh_key_filename:        
+            new_args = [
+                "ssh", 
+                "-i", 
+                self.ssh_key_filename, 
+                "{}@{}".format(self.ssh_username, self.ssh_host)
+            ]
+        else:
+            new_args = ["ssh", self.ssh_host]
         new_args.extend(args)
         p = subprocess.Popen(new_args, stdout=subprocess.PIPE)
         (output, err) = p.communicate()
@@ -46,12 +75,23 @@ class HostConfig(object):
         return (output, err)
 
     def upload(self, local_path, remote_path):
-        remote_hostname = self.host_config["ssh_host"]        
-        subprocess.call([
-            "scp",
-            local_path,
-            "{}:{}".format(remote_hostname, remote_path)
-        ])
+        if self.ssh_key_filename:        
+            new_args = [
+                "scp", "-i", self.ssh_key_filename,
+                local_path,
+                "{}@{}:{}".format(
+                    self.ssh_username,
+                    self.ssh_host, remote_path
+                )
+            ]
+        else:
+            new_args = [
+                "scp",
+                local_path,
+                "{}:{}".format(self.ssh_host, remote_path)
+            ]
+
+        subprocess.call(new_args)
     
 class AppConfig(object):
     def __init__(self, name, app_config):
