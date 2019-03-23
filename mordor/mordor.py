@@ -102,6 +102,10 @@ class AppConfig(object):
     @property
     def home_dir(self):
         return self.app_config["home_dir"]
+    
+    @property
+    def cmd(self):
+        return self.app_config.get("cmd", "run.sh")
 
     @property
     def use_python3(self):
@@ -182,6 +186,7 @@ def init_host(base_dir, config, host_name):
         host.path("pids"),
         host.path("logs"),
         host.path("configs"),
+        host.path("data"),
         host.path("temp"),
     ]:
         host.execute("mkdir", "-vp", dir)
@@ -189,6 +194,7 @@ def init_host(base_dir, config, host_name):
     cmds = [
         "install_packages.sh",
         "run_app.sh",
+        "run_app_py.sh",
         "get_app_status.sh",
         "kill_app.sh",
     ]
@@ -222,6 +228,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     host.execute("rm",    "-rf", host.path("apps", app.name, app.manifest.version, "*"))
     host.execute("mkdir", "-p" , host.path("logs", app.name))
     host.execute("mkdir", "-p" , host.path("configs", app.name))
+    host.execute("mkdir", "-p" , host.path("data", app.name))
 
     # remove and re-create the sym link point to the current version of the app
     host.execute("rm",    "-f",  host.path("apps", app.name, "current"))
@@ -289,22 +296,33 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
             continue
     return
 
-def run_app(base_dir, config, app_name, desired_host_name):
+def run_app(base_dir, config, app_name):
     app = config.get_app(app_name)
-    print("running application \"{}\"".format(app.name))
+    print("running application: \"{}\", cmd: \"{}\"".format(app.name, app.cmd))
     for host_name in app.deploy_to:
-        if desired_host_name and desired_host_name != host_name:
-            continue
         host = config.get_host(host_name)
         run_app_on_host(base_dir, config, app, host)
 
 def run_app_on_host(base_dir, config, app, host):
     print("    {}".format(host.name))
-    host.execute(
-        host.path("bin", "run_app.sh"),
-        host.home_dir,
-        app.name
-    )
+    if app.cmd.endswith(".sh"):
+        host.execute(
+            host.path("bin", "run_app.sh"),
+            host.home_dir,
+            app.name, 
+            app.cmd
+        )
+        return
+    if app.cmd.endswith(".py"):
+        host.execute(
+            host.path("bin", "run_app_py.sh"),
+            host.home_dir,
+            app.name,
+            app.cmd
+        )
+        return
+    print("    Invalid launcher")
+
 
 def kill_app(base_dir, config, app_name):
     app = config.get_app(app_name)
@@ -337,10 +355,18 @@ def get_app_status_on_host(base_dir, config, app, host):
     print('    {}: {}'.format(host.name, output))
 
 def main():
-    parser = argparse.ArgumentParser(description='Mordor deployment tool for python')
-    parser.add_argument("-a", "--action",    type=str, required=True, help="action")
-    parser.add_argument("-o", "--host_name", type=str, required=False, help="destination host")
-    parser.add_argument("-p", "--app_name",  type=str, required=False, help="application name")
+    parser = argparse.ArgumentParser(
+        description='Mordor deployment tool for python'
+    )
+    parser.add_argument(
+        "-a", "--action", type=str, required=True, help="action"
+    )
+    parser.add_argument(
+        "-o", "--host_name", type=str, required=False, help="destination host"
+    )
+    parser.add_argument(
+        "-p", "--app_name", type=str, required=False, help="application name"
+    )
     parser.add_argument(
         "--update_venv",  
         type=str, 
@@ -370,7 +396,7 @@ def main():
         return
     
     if args.action == "run":
-        run_app(base_dir, config, args.app_name, args.host_name)
+        run_app(base_dir, config, args.app_name)
         return
 
     if args.action == "kill":
