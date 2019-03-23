@@ -352,7 +352,7 @@ def get_app_status_on_host(base_dir, config, app, host):
         host.home_dir,
         app.name
     )
-    print('    {}: {}'.format(host.name, output))
+    print('    {}: {}'.format(host.name, output.decode('utf-8')))
 
 def main():
     parser = argparse.ArgumentParser(
