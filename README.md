@@ -22,6 +22,14 @@ You need to have a local config file placed in `~/.mordor/config.json`. Here is 
             "home_dir"  : "/home/SHIZHONG/mordor",
             "virtualenv": "/usr/bin/virtualenv",
             "python3"   : "/usr/bin/python3"
+        },
+        "test3": {
+            "ssh_host": "test3.deepspace.local",
+            "home_dir": "/root/mordor",
+            "virtualenv": "/usr/bin/virtualenv",
+            "ssh_key_filename": "~/.runtime/cloudconfig/home",
+            "ssh_username": "root",
+            "python3": "/usr/bin/python36"
         }
     },
     "applications": {
@@ -46,6 +54,12 @@ You need to have a local config file placed in `~/.mordor/config.json`. Here is 
 You should be able to ssh to the target host using their ssh_host attribute as host name without entering password.
 You may need to use `ssh-add` command and config your `~/.ssh/config`
 
+### ssh_key_filename
+If you need to use a private key to connect to ssh server, you can specify the key filename here
+
+### ssh_username
+You must provide this if you specify ssh_key_filename. It represent the ssh username
+
 ### home_dir
 This specify the home directory for mordor.
 
@@ -68,6 +82,8 @@ This is an array, tells list of host the application will deploy to.
 ### use_python3
 If true, then this application uses python3. Default is false
 
+### cmd
+optional. Specify a command when you run an application. If can be a bash shell script or a python script. A bash shell script's filename must end with `.sh`, a python script's filename must end with `.py` 
 
 # Host 
 Before a host become usable for mordor, you need to
@@ -116,6 +132,10 @@ Here is a layout of your host directory structure:
   |     |
   |     +-- <application name>_<version>    Virtual env for a given application with given version
   |
+  +-- data
+  |     |
+  |     +-- <application name>
+  |
   +-- temp                                  Temporary directory
 ```
 
@@ -141,7 +161,7 @@ The version tells the version of the app,
     * `copy` means simply copy over, `convert` means you can use variable like `home_dir` and `app_name` in your config file.
 
 # run
-You can run `mordor.py -a run --app_name <application_name>` to run the application, all host deployed will run your application
+You can run `mordor.py -a run --app_name <application_name>` to run the application, all host deployed will run your application. It will invoke the command you specify in the application's cmd config, or using "run.sh" if missing.
 
 # Application Requirement
 * You need to put a file `requirements.txt` to tell your applications dependency
