@@ -15,8 +15,8 @@ class HostConfig(object):
         self.name = host_name
     
     @property
-    def home_dir(self):
-        return self.host_config["home_dir"]
+    def env_home(self):
+        return self.host_config["env_home"]
     
     @property
     def ssh_host(self):
@@ -42,7 +42,7 @@ class HostConfig(object):
         return self.host_config.get("ssh_username")
 
     def path(self, *args):
-        return os.path.join(self.home_dir, *args)
+        return os.path.join(self.env_home, *args)
             
     def execute(self, *args):
         if self.ssh_key_filename:        
@@ -179,7 +179,7 @@ class AppManifest(object):
 def init_host(base_dir, config, host_name):
     host = config.get_host(host_name)
     for dir in [
-        host.home_dir,
+        host.env_home,
         host.path("bin"),
         host.path("apps"),
         host.path("venvs"),
@@ -257,7 +257,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
             host.execute(host.virtualenv, host.path("venvs", app.venv_name))
         host.execute(
             host.path("bin", "install_packages.sh"), 
-            host.home_dir,
+            host.env_home,
             app.name,
             app.manifest.version
         )
@@ -285,12 +285,14 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                 "r"
             ) as f:
                 content = f.read()
+            config_dir = os.path.join(host.env_home, "configs", app.name)
             content = content.format(
-                home_dir = host.home_dir,
+                config_dir = config_dir,
+                env_home = host.env_home,
                 app_name = app.name
             )
             tf = tempfile.NamedTemporaryFile(delete = False)
-            tf.file.write(content)
+            tf.file.write(content.encode("utf-8"))
             tf.file.close()
             host.upload(tf.name, host.path("configs", app.name, filename))
             continue
@@ -308,7 +310,7 @@ def run_app_on_host(base_dir, config, app, host):
     if app.cmd.endswith(".sh"):
         host.execute(
             host.path("bin", "run_app.sh"),
-            host.home_dir,
+            host.env_home,
             app.name, 
             app.cmd
         )
@@ -316,7 +318,7 @@ def run_app_on_host(base_dir, config, app, host):
     if app.cmd.endswith(".py"):
         host.execute(
             host.path("bin", "run_app_py.sh"),
-            host.home_dir,
+            host.env_home,
             app.name,
             app.cmd
         )
@@ -335,7 +337,7 @@ def kill_app_on_host(base_dir, config, app, host):
     print("    {}".format(host.name))
     host.execute(
         host.path("bin", "kill_app.sh"),
-        host.home_dir,
+        host.env_home,
         app.name
     )
 
@@ -349,7 +351,7 @@ def get_app_status(base_dir, config, app_name):
 def get_app_status_on_host(base_dir, config, app, host):
     output, err = host.execute2(
         host.path("bin", "get_app_status.sh"),
-        host.home_dir,
+        host.env_home,
         app.name
     )
     print('    {}: {}'.format(host.name, output.decode('utf-8')))

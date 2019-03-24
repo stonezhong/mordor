@@ -158,7 +158,18 @@ The version tells the version of the app,
 * All the config file will also be copied over
     * config file should be stored at `~/.mordor/configs/<application_name>`
     * the `config` section of application in `config.json` will tell what file need to be copied over
-    * `copy` means simply copy over, `convert` means you can use variable like `home_dir` and `app_name` in your config file.
+    * `copy` means simply copy over, `convert` means you can use variable like `env_home` and `app_name` in your config file.
+
+## convert
+
+Your file must be a python format string, with the following variable available
+
+| Variable name | Description                                        |
+|---------------|----------------------------------------------------|
+| env_home      | environment home directory on the host             |
+| app_name      | application name                                   |
+| config_dir    | configuration directory for the app on the host    |
+
 
 # run
 You can run `mordor.py -a run --app_name <application_name>` to run the application, all host deployed will run your application. It will invoke the command you specify in the application's cmd config, or using "run.sh" if missing.
