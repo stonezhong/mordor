@@ -23,16 +23,19 @@ class AppEnv(object):
 
     @property
     def log_dir(self):
-        return os.path(self.env_home, "logs", self.app_name)
+        return os.path.join(self.env_home, "logs", self.app_name)
 
     @property
     def data_dir(self):
-        return os.path(self.env_home, "data", self.app_name)
+        return os.path.join(self.env_home, "data", self.app_name)
 
     @property
     def config_dir(self):
-        return os.path(self.env_home, "configs", self.app_name)
+        return os.path.join(self.env_home, "configs", self.app_name)
 
     def get_json_config(self, filename):
-        with os.path(self.env_home, "configs", self.app_name, filename) as f:
+        full_path = os.path.join(
+            self.env_home, "configs", self.app_name, filename
+        )
+        with open(full_path, "r") as f:
             return json.load(f)
