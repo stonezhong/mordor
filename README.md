@@ -13,19 +13,19 @@ You need to have a local config file placed in `~/.mordor/config.json`. Here is 
     "hosts": {
         "localhost": {
             "ssh_host"  : "localhost",
-            "home_dir"  : "/Users/shizhong/mordor",
+            "env_home"  : "/Users/shizhong/mordor",
             "virtualenv": "/usr/local/bin/virtualenv",
             "python3"   : "/usr/local/bin/python3"
         },
         "mylinux": {
             "ssh_host"  : "mylinux",
-            "home_dir"  : "/home/SHIZHONG/mordor",
+            "env_home"  : "/home/SHIZHONG/mordor",
             "virtualenv": "/usr/bin/virtualenv",
             "python3"   : "/usr/bin/python3"
         },
         "test3": {
             "ssh_host": "test3.deepspace.local",
-            "home_dir": "/root/mordor",
+            "env_home": "/root/mordor",
             "virtualenv": "/usr/bin/virtualenv",
             "ssh_key_filename": "~/.runtime/cloudconfig/home",
             "ssh_username": "root",
@@ -60,7 +60,7 @@ If you need to use a private key to connect to ssh server, you can specify the k
 ### ssh_username
 You must provide this if you specify ssh_key_filename. It represent the ssh username
 
-### home_dir
+### env_home
 This specify the home directory for mordor.
 
 ### virtualenv
