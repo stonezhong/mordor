@@ -12,7 +12,7 @@ class AppEnv(object):
     @classmethod
     def get(cls):
         if cls.theEnv is None:
-            parser = argparse.ArgumentParser()
+            parser = argparse.ArgumentParser(add_help=False)
             parser.add_argument("--app_name", type=str, required=False, help="Application name")
             parser.add_argument("--env_home", type=str, required=False, help="Environment home")
             args, _ = parser.parse_known_args()
