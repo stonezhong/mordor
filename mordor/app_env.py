@@ -13,11 +13,17 @@ class AppEnv(object):
     def get(cls):
         if cls.theEnv is None:
             parser = argparse.ArgumentParser()
-            parser.add_argument("--app_name", type=str, required=True, help="Application name")
-            parser.add_argument("--env_home", type=str, required=True, help="Environment home")
+            parser.add_argument("--app_name", type=str, required=False, help="Application name")
+            parser.add_argument("--env_home", type=str, required=False, help="Environment home")
             args, _ = parser.parse_known_args()
 
-            cls.theEnv = cls(args.env_home, args.app_name)
+            env_home = args.env_home or os.environ["env_home"]
+            app_name = args.app_name or os.environ["app_name"]
+
+            if not env_home or not app_name:
+                raise Exception("env_home or app_name not set")
+
+            cls.theEnv = cls(env_home, app_name)
         return cls.theEnv
 
 
