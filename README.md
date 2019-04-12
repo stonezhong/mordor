@@ -153,6 +153,8 @@ The version tells the version of the app,
     * A sym link will be crate, so you can use `app/<application_name>/current/` as the current version
 * On each deployable host, virtualenv will be created, all required package will be installed.
     * it looks for `requirements.txt` in your application directory for packages to install
+        * The file above is optional.
+        * It also look for `requirements_pre.txt`, if exist, it will be installed prior to `requirements.txt`
     * on host, virtual env is a `venvs/<application_name>-<version>`
     * a symlink will be created in `venvs/<application_name>`
 * All the config file will also be copied over
