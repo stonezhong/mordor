@@ -364,13 +364,13 @@ def main():
         "-a", "--action", type=str, required=True, help="action"
     )
     parser.add_argument(
-        "-o", "--host_name", type=str, required=False, help="destination host"
+        "-o", "--host-name", type=str, required=False, help="destination host"
     )
     parser.add_argument(
-        "-p", "--app_name", type=str, required=False, help="application name"
+        "-p", "--app-name", type=str, required=False, help="application name"
     )
     parser.add_argument(
-        "--update_venv",  
+        "--update-venv",  
         type=str, 
         required=False, 
         default="T", 
@@ -385,14 +385,14 @@ def main():
 
     if args.action == "init_host":
         if not args.host_name:
-            print("--host_name must be specified")
+            print("--host-name must be specified")
             return
         init_host(base_dir, config, args.host_name)
         return
     
     if args.action =="stage":
         if not args.app_name:
-            print("--app_name must be specified")
+            print("--app-name must be specified")
             return
         stage_app(base_dir, config, args.app_name, args.update_venv == 'T')
         return

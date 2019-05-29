@@ -88,7 +88,7 @@ optional. Specify a command when you run an application. If can be a bash shell 
 # Host 
 Before a host become usable for mordor, you need to
 * Add host config to your `~/.mordor/config.json`
-* Run `mordor -a init_host --host_name <hostname>` to initialize your host
+* Run `mordor -a init-host --host-name <hostname>` to initialize your host
 
 ## Before initialization
 On host of your fleet, 
@@ -99,7 +99,7 @@ On host of your fleet,
 * You need to add entry in hosts sections for every machine you managed.
 
 ## Initialization
-Run `mordor.py -a init_host --host_name <hostname>` to initialize your host. The host only need to be initialized once normally.
+Run `mordor.py -a init-host --host-name <hostname>` to initialize your host. The host only need to be initialized once normally.
 Here is a layout of your host directory structure:
 ```
 <Mordor Home Directory>
@@ -140,7 +140,7 @@ Here is a layout of your host directory structure:
 ```
 
 # Stage Your Application
-You can run command `mordor.py -a stage --app_name <application_name>` to stage application to all the host the app is suppose to deploy
+You can run command `mordor.py -a stage --app-name <application_name>` to stage application to all the host the app is suppose to deploy
 * In `config.json`, the `deploy_to` tells the list of host it will deploy to
 * In application's home directory, there is a file `manifest.json`, it looks like below
 ```
@@ -174,7 +174,7 @@ Your file must be a python format string, with the following variable available
 
 
 # run
-You can run `mordor.py -a run --app_name <application_name>` to run the application, all host deployed will run your application. It will invoke the command you specify in the application's cmd config, or using "run.sh" if missing.
+You can run `mordor.py -a run --app-name <application_name>` to run the application, all host deployed will run your application. It will invoke the command you specify in the application's cmd config, or using "run.sh" if missing.
 
 # Application Requirement
 * You need to put a file `requirements.txt` to tell your applications dependency
