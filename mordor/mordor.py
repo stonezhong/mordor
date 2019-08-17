@@ -219,9 +219,9 @@ def stage_app(base_dir, config, app_name, update_venv, host_name = None):
     # tar -czf /tmp/a.tar.gz -C $PWD *
     archive_filename = app.create_archive()
     if host_name is not None:
-        deploy_to = app.deploy_to
-    else:
         deploy_to = [host_name]
+    else:
+        deploy_to = app.deploy_to
 
     for host_name in deploy_to:
         host = config.get_host(host_name)
