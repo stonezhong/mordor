@@ -212,13 +212,18 @@ def init_host(base_dir, config, host_name):
 
 
 # stage an python application on the target host
-def stage_app(base_dir, config, app_name, update_venv):
+def stage_app(base_dir, config, app_name, update_venv, host_name = None):
     app = config.get_app(app_name)
 
     # archive the entire app and send it to host
     # tar -czf /tmp/a.tar.gz -C $PWD *
     archive_filename = app.create_archive()
-    for host_name in app.deploy_to:
+    if host_name is not None:
+        deploy_to = app.deploy_to
+    else:
+        deploy_to = [host_name]
+
+    for host_name in deploy_to:
         host = config.get_host(host_name)
         stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv)
 
@@ -395,7 +400,7 @@ def main():
     # get the config file
     config = Config(get_json("~/.mordor/config.json"))
 
-    if args.action == "init_host":
+    if args.action == "init-host":
         if not args.host_name:
             print("--host-name must be specified")
             return
@@ -406,7 +411,7 @@ def main():
         if not args.app_name:
             print("--app-name must be specified")
             return
-        stage_app(base_dir, config, args.app_name, args.update_venv == 'T')
+        stage_app(base_dir, config, args.app_name, args.update_venv == 'T', host_name = args.host_name)
         return
 
     if args.action == "run":
