@@ -8,6 +8,7 @@ import os
 import json
 import tempfile
 import glob
+from collections import defaultdict
 
 
 class HostConfig(object):
@@ -96,10 +97,18 @@ class HostConfig(object):
 
 
 class AppConfig(object):
-    def __init__(self, name, app_config):
+    def __init__(self, deployment_name, app_config):
         self.app_config = app_config
-        self.name = name
+        self.deployment_name = deployment_name
         self.manifest = AppManifest(get_json(self.path("manifest.json")))
+
+    @property
+    def stage(self):
+        return self.app_config.get("stage")
+
+    @property
+    def name(self):
+        return self.app_config.get("name", self.deployment_name)
 
     @property
     def home_dir(self):
@@ -155,15 +164,19 @@ class Config(object):
         self.host_dict = {}
         for (host_name, host_config) in self.config["hosts"].items():
             self.host_dict[host_name] = HostConfig(host_name, host_config)
-        self.app_dict = {}
-        for (app_name, app_config) in self.config["applications"].items():
-            self.app_dict[app_name] = AppConfig(app_name, app_config)
+        self.app_dict = defaultdict(dict)  # key is deployment_name
+        for (deployment_name, app_config) in self.config["applications"].items():
+            app = AppConfig(deployment_name, app_config)
+            if app.stage in self.app_dict[app.name]:
+                raise Exception("Duplicate: application = {}, stage = {}".format(app.name, app.stage))
+            else:
+                self.app_dict[app.name][app.stage] = app
 
     def get_host(self, host_name):
         return self.host_dict[host_name]
 
-    def get_app(self, app_name):
-        return self.app_dict[app_name]
+    def get_app(self, app_name, stage=None):
+        return self.app_dict[app_name].get(stage)
 
 
 def get_json(path):
@@ -183,6 +196,10 @@ class AppManifest(object):
 # Initialize a given server so it can run python code
 def init_host(base_dir, config, host_name):
     host = config.get_host(host_name)
+    if host is None:
+        print("Host {} does not exist".format(host_name))
+        exit(1)
+
     for dir in [
         host.env_home,
         host.path("bin"),
@@ -202,18 +219,25 @@ def init_host(base_dir, config, host_name):
         "run_app_py.sh",
         "get_app_status.sh",
         "kill_app.sh",
+        "init_host.sh",
+        "host_tools.txt",
     ]
     for cmd in cmds:
         host.upload(
             os.path.join(base_dir, "bin", cmd),
             host.path("bin", cmd)
         )
-        host.execute("chmod", "+x", host.path("bin", cmd))
+        if cmd.endswith(".sh"):
+            host.execute("chmod", "+x", host.path("bin", cmd))
 
+    host.execute(host.path("bin", "init_host.sh"), host.env_home)
 
 # stage an python application on the target host
-def stage_app(base_dir, config, app_name, update_venv, host_name = None):
-    app = config.get_app(app_name)
+def stage_app(base_dir, config, app_name, update_venv, stage = None, host_name = None):
+    app = config.get_app(app_name, stage=stage)
+    if app is None:
+        print("Application {} with stage {} does not exist".format(app_name, stage))
+        exit(1)
 
     # archive the entire app and send it to host
     # tar -czf /tmp/a.tar.gz -C $PWD *
@@ -223,13 +247,22 @@ def stage_app(base_dir, config, app_name, update_venv, host_name = None):
     else:
         deploy_to = app.deploy_to
 
+    # do a check first
+    for host_name in deploy_to:
+        host = config.get_host(host_name)
+        if host is None:
+            print("Host {} does not exist".format(host_name))
+            exit(1)
+
     for host_name in deploy_to:
         host = config.get_host(host_name)
         stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv)
 
 
 def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv):
-    print("stage application \"{}\" on host \"{}\"".format(app.name, host.name))
+    print("stage application \"{}\" for stage \"{}\" on host \"{}\"".format(
+        app.name, app.stage, host.name
+    ))
     # copy app archive to remote host
     host.upload(archive_filename, host.path("temp", app.archive_filename))
 
@@ -310,16 +343,32 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     return
 
 
-def run_app(base_dir, config, app_name):
-    app = config.get_app(app_name)
-    print("running application: \"{}\", cmd: \"{}\"".format(app.name, app.cmd))
-    for host_name in app.deploy_to:
+def run_app(base_dir, config, app_name, stage = None, host_name = None):
+    app = config.get_app(app_name, stage=stage)
+    if app is None:
+        print("Application {} with stage {} does not exist".format(app_name, stage))
+        exit(1)
+
+    if host_name is not None:
+        run_on = [host_name]
+    else:
+        run_on = app.deploy_to
+
+    # do a check first
+    for host_name in run_on:
+        host = config.get_host(host_name)
+        if host is None:
+            print("Host {} does not exist".format(host_name))
+            exit(1)
+
+    for host_name in run_on:
         host = config.get_host(host_name)
         run_app_on_host(base_dir, config, app, host)
 
 
 def run_app_on_host(base_dir, config, app, host):
-    print("    {}".format(host.name))
+    print("running application: \"{}\", cmd: \"{}\", on \"{}\"".format(app.name, app.cmd, host.name))
+
     if app.cmd.endswith(".sh"):
         host.execute(
             host.path("bin", "run_app.sh"),
@@ -339,16 +388,33 @@ def run_app_on_host(base_dir, config, app, host):
     print("    Invalid launcher")
 
 
-def kill_app(base_dir, config, app_name):
-    app = config.get_app(app_name)
-    print("killing application \"{}\"".format(app.name))
-    for host_name in app.deploy_to:
+def kill_app(base_dir, config, app_name, stage = None, host_name = None):
+    app = config.get_app(app_name, stage=stage)
+    if app is None:
+        print("Application {} with stage {} does not exist".format(app_name, stage))
+        exit(1)
+
+    if host_name is not None:
+        kill_on = [host_name]
+    else:
+        kill_on = app.deploy_to
+
+    # do a check first
+    for host_name in kill_on:
+        host = config.get_host(host_name)
+        if host is None:
+            print("Host {} does not exist".format(host_name))
+            exit(1)
+
+    for host_name in kill_on:
         host = config.get_host(host_name)
         kill_app_on_host(base_dir, config, app, host)
 
 
 def kill_app_on_host(base_dir, config, app, host):
-    print("    {}".format(host.name))
+    print("killing application \"{}\" for stage \"\" on \"\"".format(
+        app.name, app.stage, host.name
+    ))
     host.execute(
         host.path("bin", "kill_app.sh"),
         host.env_home,
@@ -378,7 +444,7 @@ def main():
         description='Mordor deployment tool for python'
     )
     parser.add_argument(
-        "-a", "--action", type=str, required=True, help="action"
+        "-a", "--action", type=str, required=True, help="action. Could be init-host, stage, run, kill or status"
     )
     parser.add_argument(
         "-o", "--host-name", type=str, required=False, help="destination host"
@@ -387,11 +453,14 @@ def main():
         "-p", "--app-name", type=str, required=False, help="application name"
     )
     parser.add_argument(
+        "-s", "--stage", type=str, required=False, help="stage"
+    )
+    parser.add_argument(
         "--update-venv",
         type=str,
         required=False,
         default="T",
-        help="Should I update virtual env?"
+        help="Specify T if you want to update virtualenv, F if not. Default is T"
     )
     args = parser.parse_args()
 
@@ -411,15 +480,27 @@ def main():
         if not args.app_name:
             print("--app-name must be specified")
             return
-        stage_app(base_dir, config, args.app_name, args.update_venv == 'T', host_name = args.host_name)
+        stage_app(
+            base_dir, config, args.app_name, args.update_venv == 'T', 
+            stage = args.stage,
+            host_name = args.host_name
+        )
         return
 
     if args.action == "run":
-        run_app(base_dir, config, args.app_name)
+        run_app(
+            base_dir, config, args.app_name, 
+            stage = args.stage, 
+            host_name = args.host_name
+        )
         return
 
     if args.action == "kill":
-        kill_app(base_dir, config, args.app_name)
+        kill_app(
+            base_dir, config, args.app_name, 
+            stage = args.stage, 
+            host_name = args.host_name
+        )
         return
 
     if args.action == "status":

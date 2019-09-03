@@ -1,0 +1,5 @@
+function eae()) {
+    APP_ID=$1
+    cd $ENV_HOME/apps/$1/current
+    . $ENV_HOME/venvs/$1/bin/activate
+}

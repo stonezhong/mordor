@@ -71,7 +71,34 @@ This specify the full path for python3. You do not need to have this attribute i
 
 ## Application configs
 
-* In applications. key is application name, value is application config
+* In applications. key is application deployment name, value is application config. 
+```
+Application deployment name is not application name. It represent a deployment instead of an application. For example, you can have 2 entries under applications, one called "sample_beta" and ther other called "sample_prod", both represent the same application but they deploy to different set or machines for different stages, and they are likely to have different configs. In such case, you can use "name" to specify the application name. E.g.:
+
+        "sample_beta": {
+            "name"        : "sample",
+            "stage"       : "beta",
+            "home_dir"    : "/Users/shizhong/projects/sample",
+            "deploy_to"   : [ "localhost" ],
+            "use_python3" : true,
+            "config"      : {
+                "config"         : "convert",
+                "oci_api_key.pem": "copy"
+            }
+        },
+        "sample_prod": {
+            "name"        : "sample",
+            "stage"        : "prod",
+            "home_dir"    : "/Users/shizhong/projects/sample",
+            "deploy_to"   : [ "mylinux"],
+            "use_python3" : true,
+            "config"      : {
+                "config"         : "convert",
+                "oci_api_key.pem": "copy"
+            }
+        },
+
+```
 
 ### home_dir
 This specify where is the application's home directory.
