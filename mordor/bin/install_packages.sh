@@ -5,7 +5,7 @@
 # $3: version
 
 source $1/venvs/$2-$3/bin/activate
-pip -q install --upgrade pip
+python -m pip -q install --upgrade pip setuptools
 if [ -e $1/apps/$2/$3/requirements_pre.txt ]
 then
     pip -q install -r $1/apps/$2/$3/requirements_pre.txt
