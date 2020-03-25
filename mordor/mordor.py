@@ -233,7 +233,7 @@ def init_host(base_dir, config, host_name):
     host.execute(host.path("bin", "init_host.sh"), host.env_home)
 
 # stage an python application on the target host
-def stage_app(base_dir, config, app_name, update_venv, stage = None, host_name = None):
+def stage_app(base_dir, config, app_name, update_venv, stage=None, host_name=None):
     app = config.get_app(app_name, stage=stage)
     if app is None:
         print("Application {} with stage {} does not exist".format(app_name, stage))
@@ -256,10 +256,10 @@ def stage_app(base_dir, config, app_name, update_venv, stage = None, host_name =
 
     for host_name in deploy_to:
         host = config.get_host(host_name)
-        stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv)
+        stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, stage=stage)
 
 
-def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv):
+def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, stage=None):
     print("stage application \"{}\" for stage \"{}\" on host \"{}\"".format(
         app.name, app.stage, host.name
     ))
@@ -312,20 +312,23 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                      host.path("venvs", app.name)
                      )
 
+    # allow user to have different configs for different stages
+    config_base_dir = os.path.join(os.path.expanduser("~/.mordor/configs"), app.name)
+    if stage is not None:
+        staged_config_base_dir = os.path.join(config_base_dir, stage)
+        if os.path.isdir(staged_config_base_dir):
+            config_base_dir = staged_config_base_dir
+
     for (filename, deploy_type) in app.config.items():
         if deploy_type == "copy":
             host.upload(
-                os.path.join(
-                    os.path.expanduser("~/.mordor/configs"),
-                    app.name,
-                    filename
-                ),
+                os.path.join(config_base_dir, filename),
                 host.path("configs", app.name, filename),
             )
             continue
         if deploy_type == "convert":
             with open(
-                    os.path.join(os.path.expanduser("~/.mordor/configs"), app.name, filename),
+                    os.path.join(config_base_dir, filename),
                     "r"
             ) as f:
                 content = f.read()
