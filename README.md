@@ -112,6 +112,9 @@ If true, then this application uses python3. Default is false
 ### cmd
 optional. Specify a command when you run an application. If can be a bash shell script or a python script. A bash shell script's filename must end with `.sh`, a python script's filename must end with `.py` 
 
+### application config file location
+By default it is located at `~/.mordor/configs/<application_name>/<stage>` or `~/.mordor/configs/<application_name>`
+
 # Host 
 Before a host become usable for mordor, you need to
 * Add host config to your `~/.mordor/config.json`
