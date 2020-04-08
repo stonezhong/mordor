@@ -1,0 +1,35 @@
+{
+    "target": {
+        "dcs": {
+            "type"      : "ssh",
+            "ssh_host"  : "dcs",
+            "env_home"  : "/root/mordor",
+            "virtualenv": "/usr/bin/virtualenv",
+            "python3"   : "/usr/bin/python3"
+        }
+    },
+    "deployments": {
+        "dcs": {
+            "home_dir"    : "/home/stonezhong/DATA_DISK/projects/DataCatalog",
+            "use_python3" : true,
+            "config"      : {
+                "db.json": "copy",
+                "django.json": "copy"
+            },
+            "_prod_": {
+                "deploy_to"   : [ "dcs_prod" ],
+                "config"      : {
+                    "db.json": "copy",
+                    "django.json": "copy"
+                }
+            },
+            "_beta_": {
+                "deploy_to"   : [ "dcs_beta" ],
+                "config"      : {
+                    "db.json": "copy",
+                    "django.json": "copy"
+                }
+            }
+        }
+    }
+}

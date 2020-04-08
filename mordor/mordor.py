@@ -3,457 +3,80 @@
 
 from __future__ import print_function
 import argparse
-import subprocess
 import os
 import json
-import tempfile
-import glob
-from collections import defaultdict
 
-
-class HostConfig(object):
-    def __init__(self, host_name, host_config):
-        self.host_config = host_config
-        self.name = host_name
-
-    @property
-    def env_home(self):
-        return self.host_config["env_home"]
-
-    @property
-    def ssh_host(self):
-        return self.host_config["ssh_host"]
-
-    @property
-    def virtualenv(self):
-        return self.host_config["virtualenv"]
-
-    @property
-    def python3(self):
-        return self.host_config.get("python3")
-
-    @property
-    def ssh_key_filename(self):
-        v = self.host_config.get("ssh_key_filename")
-        if not v:
-            return v
-        return os.path.expanduser(v)
-
-    @property
-    def ssh_username(self):
-        return self.host_config.get("ssh_username")
-
-    def path(self, *args):
-        return os.path.join(self.env_home, *args)
-
-    def execute(self, *args):
-        if self.ssh_key_filename:
-            new_args = [
-                "ssh",
-                "-i",
-                self.ssh_key_filename,
-                "{}@{}".format(self.ssh_username, self.ssh_host)
-            ]
-        else:
-            new_args = ["ssh", self.ssh_host]
-        new_args.extend(args)
-        subprocess.call(new_args)
-
-    # execute, wait for finish and get the output
-    def execute2(self, *args):
-        if self.ssh_key_filename:
-            new_args = [
-                "ssh",
-                "-i",
-                self.ssh_key_filename,
-                "{}@{}".format(self.ssh_username, self.ssh_host)
-            ]
-        else:
-            new_args = ["ssh", self.ssh_host]
-        new_args.extend(args)
-        p = subprocess.Popen(new_args, stdout=subprocess.PIPE)
-        (output, err) = p.communicate()
-        p_status = p.wait()
-        return (output, err)
-
-    def upload(self, local_path, remote_path):
-        if self.ssh_key_filename:
-            new_args = [
-                "scp", "-q", "-i", self.ssh_key_filename,
-                local_path,
-                "{}@{}:{}".format(
-                    self.ssh_username,
-                    self.ssh_host, remote_path
-                )
-            ]
-        else:
-            new_args = [
-                "scp", "-q",
-                local_path,
-                "{}:{}".format(self.ssh_host, remote_path)
-            ]
-
-        subprocess.call(new_args)
-
-
-class AppConfig(object):
-    def __init__(self, deployment_name, app_config):
-        self.app_config = app_config
-        self.deployment_name = deployment_name
-        self.manifest = AppManifest(get_json(self.path("manifest.json")))
-
-    @property
-    def stage(self):
-        return self.app_config.get("stage")
-
-    @property
-    def name(self):
-        return self.app_config.get("name", self.deployment_name)
-
-    @property
-    def home_dir(self):
-        return self.app_config["home_dir"]
-
-    @property
-    def cmd(self):
-        return self.app_config.get("cmd", "run.sh")
-
-    @property
-    def use_python3(self):
-        return self.app_config.get("use_python3", False)
-
-    @property
-    def config(self):
-        # config files need to copied over
-        return self.app_config.get("config", {})
-
-    @property
-    def deploy_to(self):
-        return self.app_config["deploy_to"]
-
-    def path(self, *args):
-        return os.path.join(self.home_dir, *args)
-
-    @property
-    def archive_filename(self):
-        return "{}-{}.tar.gz".format(self.name, self.manifest.version)
-
-    @property
-    def venv_name(self):
-        return "{}-{}".format(self.name, self.manifest.version)
-
-    def create_archive(self):
-        temp_dir = tempfile.mkdtemp()
-        args = [
-            'tar',
-            '-czf',
-            os.path.join(temp_dir, self.archive_filename),
-            "-C",
-            self.home_dir
-        ]
-        files_to_add = glob.glob("{}/*".format(self.home_dir))
-        files_to_add = [item[len(self.home_dir) + 1:] for item in files_to_add]
-        args.extend(files_to_add)
-        subprocess.call(args)
-        return os.path.join(temp_dir, self.archive_filename)
-
-
-class Config(object):
-    def __init__(self, config):
-        self.config = config
-        self.host_dict = {}
-        for (host_name, host_config) in self.config["hosts"].items():
-            self.host_dict[host_name] = HostConfig(host_name, host_config)
-        self.app_dict = defaultdict(dict)  # key is deployment_name
-        for (deployment_name, app_config) in self.config["applications"].items():
-            app = AppConfig(deployment_name, app_config)
-            if app.stage in self.app_dict[app.name]:
-                raise Exception("Duplicate: application = {}, stage = {}".format(app.name, app.stage))
-            else:
-                self.app_dict[app.name][app.stage] = app
-
-    def get_host(self, host_name):
-        return self.host_dict[host_name]
-
-    def get_app(self, app_name, stage=None):
-        return self.app_dict[app_name].get(stage)
-
-
-def get_json(path):
-    with open(os.path.expanduser(path), "r") as f:
-        return json.load(f)
-
-
-class AppManifest(object):
-    def __init__(self, manifest):
-        self.manifest = manifest
-
-    @property
-    def version(self):
-        return self.manifest["version"]
-
-
-# Initialize a given server so it can run python code
-def init_host(base_dir, config, host_name):
-    host = config.get_host(host_name)
-    if host is None:
-        print("Host {} does not exist".format(host_name))
-        exit(1)
-
-    for dir in [
-        host.env_home,
-        host.path("bin"),
-        host.path("apps"),
-        host.path("venvs"),
-        host.path("pids"),
-        host.path("logs"),
-        host.path("configs"),
-        host.path("data"),
-        host.path("temp"),
-    ]:
-        host.execute("mkdir", "-vp", dir)
-
-    cmds = [
-        "install_packages.sh",
-        "run_app.sh",
-        "run_app_py.sh",
-        "get_app_status.sh",
-        "kill_app.sh",
-        "init_host.sh",
-        "host_tools.txt",
-    ]
-    for cmd in cmds:
-        host.upload(
-            os.path.join(base_dir, "bin", cmd),
-            host.path("bin", cmd)
-        )
-        if cmd.endswith(".sh"):
-            host.execute("chmod", "+x", host.path("bin", cmd))
-
-    host.execute(host.path("bin", "init_host.sh"), host.env_home)
-
-# stage an python application on the target host
-def stage_app(base_dir, config, app_name, update_venv, stage=None, host_name=None):
-    app = config.get_app(app_name, stage=stage)
-    if app is None:
-        print("Application {} with stage {} does not exist".format(app_name, stage))
-        exit(1)
-
-    # archive the entire app and send it to host
-    # tar -czf /tmp/a.tar.gz -C $PWD *
-    archive_filename = app.create_archive()
-    if host_name is not None:
-        deploy_to = [host_name]
-    else:
-        deploy_to = app.deploy_to
-
-    # do a check first
-    for host_name in deploy_to:
-        host = config.get_host(host_name)
-        if host is None:
-            print("Host {} does not exist".format(host_name))
-            exit(1)
-
-    for host_name in deploy_to:
-        host = config.get_host(host_name)
-        stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, stage=stage)
-
-
-def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, stage=None):
-    print("stage application \"{}\" for stage \"{}\" on host \"{}\"".format(
-        app.name, app.stage, host.name
-    ))
-    # copy app archive to remote host
-    host.upload(archive_filename, host.path("temp", app.archive_filename))
-
-    # create directorys
-    host.execute("mkdir", "-p", host.path("apps", app.name))
-    host.execute("mkdir", "-p", host.path("apps", app.name, app.manifest.version))
-    host.execute("rm", "-rf", host.path("apps", app.name, app.manifest.version, "*"))
-    host.execute("mkdir", "-p", host.path("logs", app.name))
-    host.execute("mkdir", "-p", host.path("configs", app.name))
-    host.execute("mkdir", "-p", host.path("data", app.name))
-
-    # remove and re-create the sym link point to the current version of the app
-    host.execute("rm", "-f", host.path("apps", app.name, "current"))
-    host.execute(
-        "ln",
-        "-s",
-        host.path("apps", app.name, app.manifest.version),
-        host.path("apps", app.name, "current")
-    )
-
-    # extract app archive
-    host.execute(
-        'tar',
-        '-xzf',
-        host.path("temp", app.archive_filename),
-        "-C",
-        host.path("apps", app.name, app.manifest.version)
-    )
-
-    # recreate venv since dependencies may have changed
-    if update_venv:
-        host.execute("rm", "-rf", host.path("venvs", app.venv_name))
-        if app.use_python3:
-            host.execute(host.virtualenv, "-p", host.python3, host.path("venvs", app.venv_name))
-        else:
-            host.execute(host.virtualenv, host.path("venvs", app.venv_name))
-        host.execute(
-            host.path("bin", "install_packages.sh"),
-            host.env_home,
-            app.name,
-            app.manifest.version
-        )
-        # create a symlink
-        host.execute("rm", "-f", host.path("venvs", app.name))
-        host.execute("ln", "-s",
-                     host.path("venvs", app.venv_name),
-                     host.path("venvs", app.name)
-                     )
-
-    # allow user to have different configs for different stages
-    config_base_dir = os.path.join(os.path.expanduser("~/.mordor/configs"), app.name)
-    if stage is not None:
-        staged_config_base_dir = os.path.join(config_base_dir, stage)
-        if os.path.isdir(staged_config_base_dir):
-            config_base_dir = staged_config_base_dir
-
-    for (filename, deploy_type) in app.config.items():
-        if deploy_type == "copy":
-            host.upload(
-                os.path.join(config_base_dir, filename),
-                host.path("configs", app.name, filename),
-            )
-            continue
-        if deploy_type == "convert":
-            with open(
-                    os.path.join(config_base_dir, filename),
-                    "r"
-            ) as f:
-                content = f.read()
-            config_dir = os.path.join(host.env_home, "configs", app.name)
-            content = content.format(
-                config_dir=config_dir,
-                env_home=host.env_home,
-                app_name=app.name
-            )
-            tf = tempfile.NamedTemporaryFile(delete=False)
-            tf.file.write(content.encode("utf-8"))
-            tf.file.close()
-            host.upload(tf.name, host.path("configs", app.name, filename))
-            continue
-    return
-
-
-def run_app(base_dir, config, app_name, stage = None, host_name = None):
-    app = config.get_app(app_name, stage=stage)
-    if app is None:
-        print("Application {} with stage {} does not exist".format(app_name, stage))
-        exit(1)
-
-    if host_name is not None:
-        run_on = [host_name]
-    else:
-        run_on = app.deploy_to
-
-    # do a check first
-    for host_name in run_on:
-        host = config.get_host(host_name)
-        if host is None:
-            print("Host {} does not exist".format(host_name))
-            exit(1)
-
-    for host_name in run_on:
-        host = config.get_host(host_name)
-        run_app_on_host(base_dir, config, app, host)
-
-
-def run_app_on_host(base_dir, config, app, host):
-    print("running application: \"{}\", cmd: \"{}\", on \"{}\"".format(app.name, app.cmd, host.name))
-
-    if app.cmd.endswith(".sh"):
-        host.execute(
-            host.path("bin", "run_app.sh"),
-            host.env_home,
-            app.name,
-            app.cmd
-        )
-        return
-    if app.cmd.endswith(".py"):
-        host.execute(
-            host.path("bin", "run_app_py.sh"),
-            host.env_home,
-            app.name,
-            app.cmd
-        )
-        return
-    print("    Invalid launcher")
-
-
-def kill_app(base_dir, config, app_name, stage = None, host_name = None):
-    app = config.get_app(app_name, stage=stage)
-    if app is None:
-        print("Application {} with stage {} does not exist".format(app_name, stage))
-        exit(1)
-
-    if host_name is not None:
-        kill_on = [host_name]
-    else:
-        kill_on = app.deploy_to
-
-    # do a check first
-    for host_name in kill_on:
-        host = config.get_host(host_name)
-        if host is None:
-            print("Host {} does not exist".format(host_name))
-            exit(1)
-
-    for host_name in kill_on:
-        host = config.get_host(host_name)
-        kill_app_on_host(base_dir, config, app, host)
-
-
-def kill_app_on_host(base_dir, config, app, host):
-    print("killing application \"{}\" for stage \"\" on \"\"".format(
-        app.name, app.stage, host.name
-    ))
-    host.execute(
-        host.path("bin", "kill_app.sh"),
-        host.env_home,
-        app.name
-    )
-
-
-def get_app_status(base_dir, config, app_name):
-    app = config.get_app(app_name)
-    print("status of application \"{}\"".format(app.name))
-    for host_name in app.deploy_to:
-        host = config.get_host(host_name)
-        get_app_status_on_host(base_dir, config, app, host)
-
-
-def get_app_status_on_host(base_dir, config, app, host):
-    output, err = host.execute2(
-        host.path("bin", "get_app_status.sh"),
-        host.env_home,
-        app.name
-    )
-    print('    {}: {}'.format(host.name, output.decode('utf-8')))
-
+from .host import Host
+from .compartment import Compartment
+from .deployment import Deployment
+from .application import Application
+from .configuration import Configuration
+
+class Mordor(object):
+    def __init__(self, base_dir, config_dir):
+        # base_dir is the directory where mordor is installed
+        # since we need to copy bin files to targets, we need to 
+        # remember where we are launched off
+        self.base_dir = base_dir
+        self.config_dir = config_dir
+
+        self.config = self.load_json('config.json')
+
+        self.hosts = {}
+        for host_config in self.config["hosts"]:
+            host_id = host_config["id"]
+            if host_id in self.hosts:
+                raise Exception("Duplicate host: {}".format(host_id))
+            self.hosts[host_id] = Host(self, host_config)
+
+        self.compartments = {}
+        for compartment_config in self.config['compartments']:
+            compartment_id = compartment_config['id']
+            if compartment_id in self.compartments:
+                raise Exception("Duplicate compartment: {}".format(compartment_id))
+            self.compartments[compartment_id] = Compartment(self, compartment_config)
+
+        self.applications = {}
+        for application_config in self.config['applications']:
+            application_id = application_config['id']
+            if application_id in self.applications:
+                raise Exception("Duplicate application: {}".format(application_id))
+            self.applications[application_id] = Application(self, application_config)
+
+        self.configurations = {}
+        for configuration_config in self.config['configurations']:
+            configuration_id = configuration_config['id']
+            if configuration_id in self.configurations:
+                raise Exception("Duplicate configuration: {}".format(configuration_id))
+            self.configurations[configuration_id] = Configuration(self, configuration_config)
+
+        self.deployments = {}
+        for deployment_config in self.config['deployments']:
+            deployment_id = deployment_config['id']
+            if deployment_id in self.deployments:
+                raise Exception("Duplicate deployment: {}".format(deployment_id))
+            self.deployments[deployment_id] = Deployment(self, deployment_config)
+
+    def load_json(self, filename):
+        with open(os.path.join(self.config_dir, filename), "rt") as f:
+            return json.load(f)
 
 def main():
     parser = argparse.ArgumentParser(
         description='Mordor deployment tool for python'
     )
     parser.add_argument(
-        "-a", "--action", type=str, required=True, help="action. Could be init-host, stage, run, kill or status"
+        "-c", "--config-dir", type=str, required=False, help="Specify the mordor config directory"
     )
     parser.add_argument(
-        "-o", "--host-name", type=str, required=False, help="destination host"
+        "-a", "--action", type=str, required=True, help="action. Could be init-target, stage, run, kill or status"
+    )
+    # cannot use -h, reserved by argparse
+    parser.add_argument(
+        "-o", "--host-id", type=str, required=False, help="Host id"
     )
     parser.add_argument(
-        "-p", "--app-name", type=str, required=False, help="application name"
+        "-p", "--deployment-id", type=str, required=False, help="deployment name"
     )
     parser.add_argument(
         "-s", "--stage", type=str, required=False, help="stage"
@@ -466,51 +89,56 @@ def main():
         help="Specify T if you want to update virtualenv, F if not. Default is T"
     )
     args = parser.parse_args()
+    config_dir = args.config_dir or os.path.expanduser("~/.mordor")
 
-    base_dir = os.path.abspath(os.path.dirname(__file__))
+    mordor = Mordor(
+        base_dir=os.path.abspath(os.path.dirname(__file__)),
+        config_dir=config_dir
+    )
 
-    # get the config file
-    config = Config(get_json("~/.mordor/config.json"))
 
     if args.action == "init-host":
-        if not args.host_name:
-            print("--host-name must be specified")
+        if not args.host_id:
+            print("--host-id must be specified")
             return
-        init_host(base_dir, config, args.host_name)
-        return
+        host = mordor.hosts.get(args.host_id)
+        if host is None:
+            raise Exception("Host {} does not exist!".format(args.host_id))
 
+        host.initialize()
+        return
+    
     if args.action == "stage":
-        if not args.app_name:
-            print("--app-name must be specified")
-            return
-        stage_app(
-            base_dir, config, args.app_name, args.update_venv == 'T', 
-            stage = args.stage,
-            host_name = args.host_name
-        )
+        deployment_id = args.deployment_id
+        mordor.deployments[args.deployment_id].stage(args)
         return
 
-    if args.action == "run":
-        run_app(
-            base_dir, config, args.app_name, 
-            stage = args.stage, 
-            host_name = args.host_name
-        )
-        return
-
-    if args.action == "kill":
-        kill_app(
-            base_dir, config, args.app_name, 
-            stage = args.stage, 
-            host_name = args.host_name
-        )
-        return
-
-    if args.action == "status":
-        get_app_status(base_dir, config, args.app_name)
-        return
-
+    
     raise Exception("unrecognized action")
+
+
+
+    # if args.action == "run":
+    #     run_app(
+    #         base_dir, config, args.app_name, 
+    #         stage = args.stage, 
+    #         host_name = args.host_name
+    #     )
+    #     return
+
+    # if args.action == "kill":
+    #     kill_app(
+    #         base_dir, config, args.app_name, 
+    #         stage = args.stage, 
+    #         host_name = args.host_name
+    #     )
+    #     return
+
+    # if args.action == "status":
+    #     get_app_status(base_dir, config, args.app_name)
+    #     return
+
+    # raise Exception("unrecognized action")
 
 
 if __name__ == '__main__':

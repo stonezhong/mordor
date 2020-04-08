@@ -11,7 +11,7 @@ with open(os.path.join(HERE, "README.md"), "r") as f:
 # This call to setup() does all the work
 setup(
     name="mordor2",
-    version="0.0.27",
+    version="1.0.0",
     description="Python Deployment Tool",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -27,12 +27,11 @@ setup(
     packages=["mordor"],
     package_data={"mordor": ["bin/*"]},
     include_package_data=True,
-    install_requires=[],
+    install_requires=["pystache"],
     entry_points={
         "console_scripts": [
             "mordor=mordor.mordor:main",
         ]
     },
 )
-
 
