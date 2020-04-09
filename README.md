@@ -7,207 +7,244 @@ If you have python based application, need to deploy to a fleet of machines and 
 * Update your python application on the fleet.
 
 # config
-You need to have a local config file placed in `~/.mordor/config.json`. Here is an example:
+The config file describes the deployment. The default location of the config file is `~/.mordor/config.json`, however, you can override it with `-c` option in command line.
+
+There are few sections in the config file.
+
+<details>
+<summary>summary</summary>
+
+
 ```
 {
-    "hosts": {
-        "localhost": {
-            "ssh_host"  : "localhost",
-            "env_home"  : "/Users/shizhong/mordor",
-            "virtualenv": "/usr/local/bin/virtualenv",
-            "python3"   : "/usr/local/bin/python3"
-        },
-        "mylinux": {
-            "ssh_host"  : "mylinux",
-            "env_home"  : "/home/SHIZHONG/mordor",
-            "virtualenv": "/usr/bin/virtualenv",
-            "python3"   : "/usr/bin/python3"
-        },
-        "test3": {
-            "ssh_host": "test3.deepspace.local",
-            "env_home": "/root/mordor",
-            "virtualenv": "/usr/bin/virtualenv",
-            "ssh_key_filename": "~/.runtime/cloudconfig/home",
-            "ssh_username": "root",
-            "python3": "/usr/bin/python36"
-        }
-    },
-    "applications": {
-        "sample": {
-            "home_dir"    : "/Users/shizhong/projects/sample",
-            "deploy_to"   : [ "mylinux", "localhost" ],
-            "use_python3" : true,
-            "config"      : {
-                "config"         : "convert",
-                "oci_api_key.pem": "copy"
-            }
-        }
-    }
+    "hosts": [
+        host1, host2, ...
+    ],
+    "compartments": [
+        compartment1, compartment2, ...
+    ],
+    "applications": [
+        application1, application2, ...
+
+    ],
+    "configurations": [
+        configuration1, configuration2, ...
+    ],
+    "deployments": [
+        deployment1, deployment2, ...
+    ]
+
 }
 ```
+</details>
 
-## Host Config
+<details>
+<summary>host</summary>
 
-* In "hosts", key is host name, value is host config
+| field       | required  | description           | example    |
+|-------------|-----------|-----------------------|------------|
+| id          | Yes       | Unique id of the host | "myserver" |
+| type        | Yes       | "ssh" or "container"t | "ssh"      |
+| host        | Yes       | ssh name for the target, either the host itself or the host that the container runs in | "www.myserver.com" |
+| container   | Optional  | the container name    | "test1"    |
+| per_user    | Yes       | false if mordor is installed system wide or per user. | false |
+| python2     | Optional  | python 2.x binary name | "python"  |
+| python3     | Optional  | python 3.x binary name | "python3" |
+| virtualenv  | Optional  | virtualenv binary name | "virtualenv-2" |
 
-### ssh_host
-You should be able to ssh to the target host using their ssh_host attribute as host name without entering password.
-You may need to use `ssh-add` command and config your `~/.ssh/config`
+* If type is `"ssh"`, it means you can connect to it via ssh, the ssh target's name is specified by `host` field. Check your `~/.ssh/config` file.
+* If type is `"container"`, it means the host is a container, you should be able to connect to the machine which this container lives in via ssh, the machine's target name is specified by `host` field. Check your `~/.ssh/config` file.
+* If type is `"container"`, the `container` field specifies the container name.
+* If per_user is `true`, then mordor is installed at `/etc/mordor`, otherwise, mordor is installed at `~/mordor` on the target, current user depend on your `~/.ssh/config`'s setting.
+* The binary name for python 2 is different in different systems, it could be `python`, or could be `python2`, we make it configurable. If python 2 is not installed, you can omit this field.
+* The binary name for python 3 is different in different systems, it could be `python`, or could be `python3`, we make it configurable. If python 3 is not installed, you can omit this field.
+* We need to run virtualenv to create virtual environment, when python 3 is used, we will run virtualenv as a module, however, when python 2 is sued, we need to run virtualenv command, the virtualenv field tells the binary name for virtualenv. You can omit this field if python 2 is not installed. 
+</details>
 
-### ssh_key_filename
-If you need to use a private key to connect to ssh server, you can specify the key filename here
+<details>
+<summary>compartment</summary>
 
-### ssh_username
-You must provide this if you specify ssh_key_filename. It represent the ssh username
+| field       | required  | description                  | example            |
+|-------------|-----------|------------------------------|--------------------|
+| id          | Yes       | Unique id of the compartment | "prod"             |
+| host        | Yes       | the id of the `host` this compartment lives in | "myserver" |
+</details>
 
-### env_home
-This specify the home directory for mordor.
+<details>
+<summary>application</summary>
 
-### virtualenv
-This specify the full path for virtualenv command
+| field           | required  | description                      | example            |
+|-----------------|-----------|----------------------------------|--------------------|
+| id              | Yes       | Unique id of the application     | "myserver"         |
+| home_dir        | Yes       | The root of the source code of the application | "~/projects/myserver" |
+| support_python2 | Optional  | Does this application support python 2? | false |
+| support_python3 | Optional  | Does this application support python 3? | true |
 
-### python3
-This specify the full path for python3. You do not need to have this attribute if you do not plan to use python3.
+* If your application does not support python 2, you can omit `support_python2` field
+* If your application does not support python 3, you can omit `support_python3` field
+</details>
 
-## Application configs
+<details>
+<summary>compartment</summary>
 
-* In applications. key is application deployment name, value is application config. 
+| field       | required  | description                  | example            |
+|-------------|-----------|------------------------------|--------------------|
+| id          | Yes       | Unique id of the compartment | "prod"             |
+| host        | Yes       | the id of the `host` this compartment lives in | "myserver" |
+</details>
+
+<details>
+<summary>configuration</summary>
+
+| field           | required  | description                        | example              |
+|-----------------|-----------|------------------------------------|----------------------|
+| id              | Yes       | Unique id of the configuration     | "beta_server_config" |
+| location        | Yes       | the filename for the configuration | "~/.configurations/beta_server_config.json" |
+| type            | Yes       | is it a raw config file or a template ? | "raw"    |
+
+* If type is `"raw"`, the file will be copied over to the host
+* If type is `"template"`, the file is a template, the variable in the template will be replaced before copy over.
+</details>
+
+<details>
+<summary>deployment</summary>
+
+| field           | required  | description                         | example                  |
+|-----------------|-----------|-------------------------------------|--------------------------|
+| id              | Yes       | The Unique id of the deployment     | "beta_server_deployment" |
+| application     | Yes       | The id of the application to deploy | "myserver"               |
+| compartment     | Yes       | The id of the compartment for the deployment destination | "prod"   |
+| use_python      | Yes       | specify which python version we are deploying, either "python2" or "python3" | "python2"   |
+| configurations  | Optional  | list of mixed, see comment <1>      | ["beta_server_config"] |
+
+* <1>: the list item could be a configuration id, such as "beta_server_config"
+* <2>: the list item could be an anonymous configuration, such as below
 ```
-Application deployment name is not application name. It represent a deployment instead of an application. For example, you can have 2 entries under applications, one called "sample_beta" and ther other called "sample_prod", both represent the same application but they deploy to different set or machines for different stages, and they are likely to have different configs. In such case, you can use "name" to specify the application name. E.g.:
+{
+    "location": "~/configs/beta_aws.json",
+    "type": "raw"
+}
+```
+</details>
 
-        "sample_beta": {
-            "name"        : "sample",
-            "stage"       : "beta",
-            "home_dir"    : "/Users/shizhong/projects/sample",
-            "deploy_to"   : [ "localhost" ],
-            "use_python3" : true,
-            "config"      : {
-                "config"         : "convert",
-                "oci_api_key.pem": "copy"
-            }
-        },
-        "sample_prod": {
-            "name"        : "sample",
-            "stage"        : "prod",
-            "home_dir"    : "/Users/shizhong/projects/sample",
-            "deploy_to"   : [ "mylinux"],
-            "use_python3" : true,
-            "config"      : {
-                "config"         : "convert",
-                "oci_api_key.pem": "copy"
-            }
-        },
+Here is an example of the [config file](sample/config.json)
+
+# Target Host file structure
+
+<details>
+<summary>details</summary>
 
 ```
-
-### home_dir
-This specify where is the application's home directory.
-
-### deploy_to
-This is an array, tells list of host the application will deploy to.
-
-### use_python3
-If true, then this application uses python3. Default is false
-
-### cmd
-optional. Specify a command when you run an application. If can be a bash shell script or a python script. A bash shell script's filename must end with `.sh`, a python script's filename must end with `.py` 
-
-### application config file location
-By default it is located at `~/.mordor/configs/<application_name>/<stage>` or `~/.mordor/configs/<application_name>`
-
-# Host 
-Before a host become usable for mordor, you need to
-* Add host config to your `~/.mordor/config.json`
-* Run `mordor -a init-host --host-name <hostname>` to initialize your host
-
-## Before initialization
-On host of your fleet, 
-* You need to make sure python 2.x is installed. For most of the Linux dist and mac, this is true.
-* If you need to deploy application that uses python3 on this host, you need to install python3
-  * And set python3 in host config  
-* You need to install virtualenv and pip.
-* You need to add entry in hosts sections for every machine you managed.
-
-## Initialization
-Run `mordor.py -a init-host --host-name <hostname>` to initialize your host. The host only need to be initialized once normally.
-Here is a layout of your host directory structure:
+MORDOR_ROOT
+  |
+  +-- applications
+  |     |
+  |     +-- application_id1
+  |           |
+  |           +-- version1
+  |           |     |
+  |           |     +-- src
+  |           |     |
+  |           |     +-- venv_p2
+  |           |     |
+  |           |     +-- venv_p3
+  |           |
+  |           +-- version2
+  |                 |
+  |                 +-- src
+  |                 |
+  |                 +-- venv_p2
+  |                 |
+  |                 +-- venv_p3
+  |
+  +-- compartments
+        |
+        +-- compartment_id1
+        |     |
+        |     +-- data
+        |     |     |
+        |     |     +-- deployment_id1
+        |     |     |
+        |     |     +-- deployment_id2
+        |     |
+        |     +-- logs
+        |           |
+        |           +-- deployment_id1
+        |           |
+        |           +-- deployment_id2
+        |
+        +-- deployments
+              |
+              +-- deployment_id1
+                    |
+                    +-- instances
+                    |     |
+                    |     +-- deployment_instance_id1
+                    |     |     |
+                    |     |     +-- config
+                    |     |     |
+                    |     |     +-- data     ==> symlink to deployment's data dir
+                    |     |     |
+                    |     |     +-- logs     ==> symlink to deployment's logs dir
+                    |     |     |
+                    |     |     +-- src      ==> symlink to application's particular version's src dir
+                    |     |     |
+                    |     |     +-- venv     ==> symlink to application's particular version's venv_p2 or venv_p3 dir
+                    |     |
+                    |     +-- deployment_instance_id2
+                    |           |
+                    |           +-- config
+                    |           |
+                    |           +-- data     ==> symlink to deployment's data dir
+                    |           |
+                    |           +-- logs     ==> symlink to deployment's logs dir
+                    |           |
+                    |           +-- src      ==> symlink to application's particular version's src dir
+                    |           |
+                    |           +-- venv     ==> symlink to application's particular version's venv_p2 or venv_p3 dir
+                    |
+                    +-- current              ==> symlink to the most recent instances
 ```
-<Mordor Home Directory>
-  |
-  +-- apps                                  Home directory for all applications
-  |     |
-  |     <application name>                  Home directory for an application
-  |         |
-  |         +-- <version 1>                 Directory for version 1 of application
-  |         |
-  |         +-- <version 2>                 Directory for version 2 of application
-  |         |
-  |         +-- current                     A symlink to the current version
-  |
-  +-- bin                                   Some tools used by mordor
-  |
-  +-- configs                               Home directory for configs for all applications
-  |     |
-  |     +-- <application name>              Config for an application
-  |
-  +-- logs                                  Home directory for logs for all applications
-  |     |
-  |     +-- <application name>              Logs for an application
-  |
-  +-- pids                                  Directory for pid for each application
-  |     |
-  |     +-- <application name>.pid          pid for the latest run of an application
-  |
-  +-- venvs                                 Home for virtual envs for all application
-  |     |
-  |     +-- <application name>_<version>    Virtual env for a given application with given version
-  |
-  +-- data
-  |     |
-  |     +-- <application name>
-  |
-  +-- temp                                  Temporary directory
-```
+</details>
 
-# Stage Your Application
-You can run command `mordor.py -a stage --app-name <application_name>` to stage application to all the host the app is suppose to deploy
-* In `config.json`, the `deploy_to` tells the list of host it will deploy to
-* In application's home directory, there is a file `manifest.json`, it looks like below
+
+
+# FAQs
+<details>
+<summary>When you deploy an app, what is the version?</summary>
+
+Each application should have a manifest.json file in the root of the source code directory. It looks like:
 ```
 {
     "version": "0.0.1"
 }
 ```
-The version tells the version of the app, 
-* On each deployable host, app's code will be copied over to `apps/<application_name>/<version>` directory
-    * A sym link will be crate, so you can use `app/<application_name>/current/` as the current version
-* On each deployable host, virtualenv will be created, all required package will be installed.
-    * it looks for `requirements.txt` in your application directory for packages to install
-        * The file above is optional.
-        * It also look for `requirements_pre.txt`, if exist, it will be installed prior to `requirements.txt`
-    * on host, virtual env is a `venvs/<application_name>-<version>`
-    * a symlink will be created in `venvs/<application_name>`
-* All the config file will also be copied over
-    * config file should be stored at `~/.mordor/configs/<application_name>`
-    * the `config` section of application in `config.json` will tell what file need to be copied over
-    * `copy` means simply copy over, `convert` means you can use variable like `env_home` and `app_name` in your config file.
 
-## convert
+Once you make any change to your application, you need to bump the version. And then your application will be deployed to the new location without overwriting the existing running app on the host.
 
-Your file must be a python format string, with the following variable available
+Note, a given version of app's code can be shared by many deployments on that host. It is also possible there are many deployments with each use different version of the same app. For example, you can have a production deployment running a stable version while the beta version running the most recent version of the code.
 
-| Variable name | Description                                        |
-|---------------|----------------------------------------------------|
-| env_home      | environment home directory on the host             |
-| app_name      | application name                                   |
-| config_dir    | configuration directory for the app on the host    |
+Do not update your code without bumping the version, in most cases, it is a bad idea, unless you are running a dev box and you are sure your deployment is the only deployment uses that code.
+</details>
 
+<details>
+<summary>What happened to data and logs directory of my deployment when a deployment happened?</summary>
 
-# run
-You can run `mordor.py -a run --app-name <application_name>` to run the application, all host deployed will run your application. It will invoke the command you specify in the application's cmd config, or using "run.sh" if missing.
+You log directory will not change, and the files in that directory will still be there.
 
-# Application Requirement
-* You need to put a file `requirements.txt` to tell your applications dependency
-* You need to provide a `run.sh` command, this command will be called to launch your program
+You data directory will not change, and the files in that directory will still be there.
 
-To see an example, see [sample](./sample)
+So you can expect your data will be kept cross deployments, but in general, keep state in local machine is not a good idea, you shuold consider to make your deployment stateless and applcation store state in the cloud.
+</details>
+
+<details>
+<summary>What does stage command do?</summary>
+
+Basically, it stages your code into the target deployment.
+* If will copy your code to the host
+* It will create a virtual environment if needed
+* It will copy your configuration to the target deployment if you specify configurations.
+* Every `stage` will create a deployment instance, which is a runtime environment that bundles the config, venv, src, logs and data directory. A deployment instance is very light-weight since except config directory, all otherr directory are simply symlinks.
+
+<b>You need to manually stop your application, do the stage and start your application</b>
+</details>
