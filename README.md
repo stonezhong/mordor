@@ -151,50 +151,50 @@ MORDOR_ROOT
   +-- compartments
         |
         +-- compartment_id1
-        |     |
-        |     +-- data
-        |     |     |
-        |     |     +-- deployment_id1
-        |     |     |
-        |     |     +-- deployment_id2
-        |     |
-        |     +-- logs
-        |           |
-        |           +-- deployment_id1
-        |           |
-        |           +-- deployment_id2
-        |
-        +-- deployments
               |
-              +-- deployment_id1
-                    |
-                    +-- instances
-                    |     |
-                    |     +-- deployment_instance_id1
-                    |     |     |
-                    |     |     +-- config
-                    |     |     |
-                    |     |     +-- data     ==> symlink to deployment's data dir
-                    |     |     |
-                    |     |     +-- logs     ==> symlink to deployment's logs dir
-                    |     |     |
-                    |     |     +-- src      ==> symlink to application's particular version's src dir
-                    |     |     |
-                    |     |     +-- venv     ==> symlink to application's particular version's venv_p2 or venv_p3 dir
-                    |     |
-                    |     +-- deployment_instance_id2
-                    |           |
-                    |           +-- config
-                    |           |
-                    |           +-- data     ==> symlink to deployment's data dir
-                    |           |
-                    |           +-- logs     ==> symlink to deployment's logs dir
-                    |           |
-                    |           +-- src      ==> symlink to application's particular version's src dir
-                    |           |
-                    |           +-- venv     ==> symlink to application's particular version's venv_p2 or venv_p3 dir
-                    |
-                    +-- current              ==> symlink to the most recent instances
+              +-- data
+              |     |
+              |     +-- deployment_id1
+              |     |
+              |     +-- deployment_id2
+              |
+              +-- logs
+              |     |
+              |     +-- deployment_id1
+              |     |
+              |     +-- deployment_id2
+              |
+              +-- deployments
+                  |
+                  +-- deployment_id1
+                          |
+                          +-- instances
+                          |     |
+                          |     +-- deployment_instance_id1
+                          |     |     |
+                          |     |     +-- config
+                          |     |     |
+                          |     |     +-- data     ==> symlink to deployment's data dir
+                          |     |     |
+                          |     |     +-- logs     ==> symlink to deployment's logs dir
+                          |     |     |
+                          |     |     +-- src      ==> symlink to application's particular version's src   dir
+                          |     |     |
+                          |     |     +-- venv     ==> symlink to application's particular version's   venv_p2 or venv_p3 dir
+                          |     |
+                          |     +-- deployment_instance_id2
+                          |           |
+                          |           +-- config
+                          |           |
+                          |           +-- data     ==> symlink to deployment's data dir
+                          |           |
+                          |           +-- logs     ==> symlink to deployment's logs dir
+                          |           |
+                          |           +-- src      ==> symlink to application's particular version's src dir
+                          |           |
+                          |           +-- venv     ==> symlink to application's particular version's venv_p2 or venv_p3 dir
+                          |
+                          +-- current              ==> symlink to the most recent instances
 ```
 </details>
 
