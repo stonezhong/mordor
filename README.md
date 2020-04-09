@@ -85,15 +85,6 @@ There are few sections in the config file.
 </details>
 
 <details>
-<summary>compartment</summary>
-
-| field       | required  | description                  | example            |
-|-------------|-----------|------------------------------|--------------------|
-| id          | Yes       | Unique id of the compartment | "prod"             |
-| host        | Yes       | the id of the `host` this compartment lives in | "myserver" |
-</details>
-
-<details>
 <summary>configuration</summary>
 
 | field           | required  | description                        | example              |
