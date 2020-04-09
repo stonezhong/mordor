@@ -2,3 +2,4 @@
 mordor2.egg-info/
 dist/
 build/
+**/__pycache__/

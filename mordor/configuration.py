@@ -1,14 +1,10 @@
 import os
 
-class Configuration(object):
+class AnonymousConfiguration(object):
     def __init__(self, mordor, config):
         self.mordor = mordor
         self.config = config
-    
-    @property
-    def id(self):
-        return self.config['id']
-    
+   
     @property
     def location(self):
         v = self.config['location']
@@ -27,3 +23,11 @@ class Configuration(object):
         return os.path.basename(self.config['location'])
 
 
+class Configuration(AnonymousConfiguration):
+    def __init__(self, mordor, config):
+        super(Configuration, self).__init__(mordor, config)
+    
+    @property
+    def id(self):
+        return self.config['id']
+    

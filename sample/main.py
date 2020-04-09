@@ -3,21 +3,12 @@
 
 from __future__ import print_function
 
-import logging
+import logging, logging.config
 import os
 
 DEPLOYMENT_BASE = os.path.dirname(os.getenv('PWD'))
-
+logging.config.fileConfig(os.path.join(DEPLOYMENT_BASE, 'config', 'log.ini'))
 logger = logging.getLogger(__name__)
-logger.setLevel(level=logging.DEBUG)
- 
-# Handler
-handler = logging.FileHandler(os.path.join(DEPLOYMENT_BASE, 'logs', 'app.log'))
-handler.setLevel(logging.INFO)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
  
 import pystache
 

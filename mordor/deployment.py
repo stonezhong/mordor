@@ -3,6 +3,8 @@ import json
 import uuid
 import pystache
 
+from .configuration import AnonymousConfiguration
+
 class Deployment(object):
     def __init__(self, mordor, config):
         self.mordor = mordor
@@ -24,9 +26,15 @@ class Deployment(object):
     @property
     def configurations(self):
         # list of configurations
-        return [
-            self.mordor.configurations[configuration_id] for configuration_id in self.config['configurations']
-        ]
+        ret = []
+        for item in self.config['configurations']:
+            if isinstance(item, str):
+                configuration = self.mordor.configurations[item]
+            else:
+                configuration = AnonymousConfiguration(self.mordor, item)
+            ret.append(configuration)
+
+        return ret
 
     @property
     def application(self):
@@ -78,7 +86,8 @@ class Deployment(object):
                 with open(configuration.location, 'rt') as f:
                     template = f.read()
                 content = pystache.render(template, {
-                    'env_home': remote_instance_dir
+                    'env_home': remote_instance_dir,
+                    'log_dir': os.path.join(remote_compartments_dir, 'logs', self.id)
                 })
                 host.upload_text(
                     content, 

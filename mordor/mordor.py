@@ -11,6 +11,7 @@ from .compartment import Compartment
 from .deployment import Deployment
 from .application import Application
 from .configuration import Configuration
+from .schema import validate_config
 
 class Mordor(object):
     def __init__(self, base_dir, config_dir):
@@ -21,6 +22,8 @@ class Mordor(object):
         self.config_dir = config_dir
 
         self.config = self.load_json('config.json')
+
+        validate_config(self.config)
 
         self.hosts = {}
         for host_config in self.config["hosts"]:
