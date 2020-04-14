@@ -29,11 +29,11 @@
     "compartments": [
         {
             "id": "foo",
-            "host": "test1"
+            "hosts": ["test1"]
         },
         {
             "id": "bar",
-            "host": "test2"
+            "hosts": ["test2"]
         }
     ],
     "applications": [
@@ -55,7 +55,7 @@
         {
             "id": "testapp",
             "application": "testapp",
-            "compartments": ["bar"],
+            "compartment": "bar",
             "use_python": "python3",
             "configurations": [
                 "oci", 
