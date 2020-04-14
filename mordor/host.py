@@ -72,8 +72,7 @@ class Host(object):
             mordor_dir = "/etc/mordor"
         
         mordor_config = os.path.join(mordor_dir, "mordor.json")
-        exit_code = self.execute("test -f {}".format(mordor_config), to_raise=False)
-        if exit_code != 0:
+        if not self.has_file(mordor_config):
             return None
         
         # mordor is installed
@@ -81,6 +80,12 @@ class Host(object):
         if not v['root_dir'].startswith('/'):
             raise Exception("Mordor config's root_dir MUST be an absolute path")
         return v
+    
+
+    def has_file(self, filename):
+        exit_code = self.execute("test -f {}".format(filename), to_raise=False)
+        return exit_code == 0
+
     
     def initialize(self):
         # initialize host, any host need to be initialized once before it can be
@@ -91,8 +96,7 @@ class Host(object):
             mordor_dir = "/etc/mordor"
         
         mordor_config = os.path.join(mordor_dir, 'mordor.json')
-        exit_code = self.execute("test -f {}".format(mordor_config), to_raise=False)
-        if exit_code == 0:
+        if self.has_file(mordor_config):
             raise Exception("Mordor has been installed on this host, please cleanup first")
 
         mordor_info = {

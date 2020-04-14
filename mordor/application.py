@@ -63,6 +63,11 @@ class Application(object):
 
 
     def build(self, host, args):
+        msg = "Build application {} on host {}".format(self.id, host.id)
+        if not args.update_venv == 'T':
+            msg += ", skil building virtual environment"
+        print(msg)
+
         remote_root_dir = host.mordor_info['root_dir']
         remote_app_dir = os.path.join(remote_root_dir, "applications", self.id)
         remote_app_archive_filename = os.path.join(remote_app_dir, self.manifest['version'] + '.tar.gz')

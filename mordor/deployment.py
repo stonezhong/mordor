@@ -58,6 +58,9 @@ class Deployment(object):
     def stage_to(self, host, args):
         self.application.build(host, args)
 
+        print("Stage application {} on host {} at compartment {}".format(
+            self.application.id, host.id, self.compartment.id
+        ))
         instance_id = str(uuid.uuid4())
         # now create runtime environment
         remote_root_dir = host.mordor_info['root_dir']
@@ -89,7 +92,8 @@ class Deployment(object):
                     template = f.read()
                 content = pystache.render(template, {
                     'env_home': remote_instance_dir,
-                    'log_dir': os.path.join(remote_compartments_dir, 'logs', self.id)
+                    'log_dir': os.path.join(remote_compartments_dir, 'logs', self.id),
+                    'data_dir': os.path.join(remote_compartments_dir, 'data', self.id),
                 })
                 host.upload_text(
                     content, 
