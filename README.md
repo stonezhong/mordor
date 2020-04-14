@@ -199,6 +199,20 @@ MORDOR_ROOT
 </details>
 
 
+# Command Example
+```
+# initialize host , host id is test1
+mordor -c . -a init-host -o test1
+
+# deploy deployment testapp, read config from current directory
+mordor -c . -a stage -p testapp
+
+# deploy deployment testapp, read config from current directory, do not update virtual env
+mordor -c . -a stage -p testapp --update-venv F
+
+# open shell console for deployment testapp, for host test1
+mordor -c . -a shell -p testapp --host test1
+```
 
 # FAQs
 <details>

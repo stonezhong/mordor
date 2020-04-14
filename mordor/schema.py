@@ -52,13 +52,18 @@ Type of the host,
                 "type": "string",
                 "description": "Unique ID for the compartment"
             },
-            "host": {
-                "type": "string",
-                "description": "the host id where this compartment lives in"
+            "hosts": {
+                "type": "array",
+                "item": {
+                    "type": [
+                        "string", 
+                    ]
+                },
+                "description": "List of host id belongs to this compartment."
             },
         },
         "additionalProperties": False,
-        "required": ["id", "host"]
+        "required": ["id", "hosts"]
     },
     "Application": {
         "type": "object",
@@ -138,12 +143,18 @@ type of the configuration\
                 "type": "string",
                 "description": "The application id for deployment. The deployment will deploy this application"
             },
-            "compartments": {
+            "compartment": {
+                "type": "string",
+                "description": "The conpartment id this application will deploy to"
+            },
+            "hosts": {
                 "type": "array",
-                "items": {
-                    "type": "string"
+                "item": {
+                    "type": [
+                        "string", 
+                    ]
                 },
-                "description": "List of conpartment id this application will deploy to"
+                "description": "List of host id this deployment will deploy to, if missing, then mean all host belong to the compartment"
             },
             "use_python": {
                 "type": "string",
@@ -162,7 +173,7 @@ type of the configuration\
             },
         },
         "additionalProperties": False,
-        "required": ["id", "application", "compartments", "use_python"]
+        "required": ["id", "application", "compartment", "use_python"]
     },
 }
 

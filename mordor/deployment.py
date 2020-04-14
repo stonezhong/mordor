@@ -4,11 +4,13 @@ import uuid
 import pystache
 
 from .configuration import AnonymousConfiguration
+from .cache import cached
 
 class Deployment(object):
     def __init__(self, mordor, config):
         self.mordor = mordor
         self.config = config
+        self._cache = {}
 
 
     @property
@@ -17,13 +19,13 @@ class Deployment(object):
 
 
     @property
-    def compartments(self):
-        # list of compartments
-        return [
-            self.mordor.compartments[compartment_id] for compartment_id in self.config['compartments']
-        ]
+    @cached('compartment')
+    def compartment(self):
+        return self.mordor.compartments[self.config['compartment']]
+
 
     @property
+    @cached('configurations')
     def configurations(self):
         # list of configurations
         ret = []
@@ -37,6 +39,7 @@ class Deployment(object):
         return ret
 
     @property
+    @cached('application')
     def application(self):
         return self.mordor.applications[self.config['application']]
     
@@ -48,19 +51,18 @@ class Deployment(object):
 
     def stage(self, args):
         # args is the command line arguments
-        for compartment in self.compartments:
-            self.stage_to(compartment, args)
+        for host in self.compartment.hosts:
+            self.stage_to(host, args)
 
 
-    def stage_to(self, compartment, args):
-        self.application.build(compartment, args)
+    def stage_to(self, host, args):
+        self.application.build(host, args)
 
         instance_id = str(uuid.uuid4())
         # now create runtime environment
-        host = compartment.host
         remote_root_dir = host.mordor_info['root_dir']
 
-        remote_compartments_dir = os.path.join(remote_root_dir, "compartments", compartment.id)
+        remote_compartments_dir = os.path.join(remote_root_dir, "compartments", self.compartment.id)
         host.execute("mkdir", "-p", remote_compartments_dir)
         host.execute("mkdir", "-p", os.path.join(remote_compartments_dir, 'data', self.id))
         host.execute("mkdir", "-p", os.path.join(remote_compartments_dir, 'logs', self.id))
@@ -111,7 +113,7 @@ class Deployment(object):
             "ln", 
             "-s", 
             os.path.join(
-                remote_root_dir, 'compartments', compartment.id, 'data', self.application.id
+                remote_root_dir, 'compartments', self.compartment.id, 'data', self.application.id
             ),
             os.path.join(remote_instance_dir, 'data')
         )
@@ -120,7 +122,7 @@ class Deployment(object):
             "ln", 
             "-s", 
             os.path.join(
-                remote_root_dir, 'compartments', compartment.id, 'logs', self.application.id
+                remote_root_dir, 'compartments', self.compartment.id, 'logs', self.application.id
             ),
             os.path.join(remote_instance_dir, 'logs')
         )
@@ -148,6 +150,20 @@ class Deployment(object):
         else:
             print("Unsupported python version: {}".format(self.use_python))
         
+        host.upload_text(
+            """\
+cd {remote_instance_dir}
+source venv/bin/activate
+PS1="\H:\e[0;31m{compartment_id}\e[m:\e[0;33m{application_id}\e[m $ "
+export DEPLOYMENT_HOME={remote_instance_dir}
+            """.format(
+                remote_instance_dir=remote_instance_dir,
+                compartment_id=self.compartment.id,
+                application_id=self.application.id
+            ),
+            os.path.join(remote_instance_dir, "shell")
+        )
+        
         remote_instance_current_dir = os.path.join(remote_deployment_dir, 'current')
         host.execute("rm", "-f", remote_instance_current_dir)
         host.execute(
@@ -156,3 +172,16 @@ class Deployment(object):
             remote_instance_dir,
             remote_instance_current_dir
         )
+
+    def venv(self, args):
+        host = self.mordor.hosts[args.host_id]
+
+        remote_root_dir = host.mordor_info['root_dir']
+        init_filename = os.path.join(
+            remote_root_dir, "compartments", self.compartment.id,
+            "deployments", self.id, "current", "shell"
+        )
+        host.execute(
+            "bash", "--init-file", init_filename, "-i"
+        )
+        return

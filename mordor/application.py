@@ -4,10 +4,13 @@ import glob
 import subprocess
 import json
 
+from .cache import cached
+
 class Application(object):
     def __init__(self, mordor, config):
         self.mordor = mordor
         self.config = config
+        self._cache = {}
 
 
     @property
@@ -16,6 +19,7 @@ class Application(object):
 
 
     @property
+    @cached('home_dir')
     def home_dir(self):
         v = self.config['home_dir']
         v = os.path.expanduser(v)
@@ -34,6 +38,7 @@ class Application(object):
 
 
     @property
+    @cached('manifest')
     def manifest(self):
         manifest_filename = os.path.join(self.home_dir, "manifest.json")
         with open(manifest_filename, "rt") as f:
@@ -57,8 +62,7 @@ class Application(object):
         return tmp_file.name
 
 
-    def build(self, compartment, args):
-        host = compartment.host
+    def build(self, host, args):
         remote_root_dir = host.mordor_info['root_dir']
         remote_app_dir = os.path.join(remote_root_dir, "applications", self.id)
         remote_app_archive_filename = os.path.join(remote_app_dir, self.manifest['version'] + '.tar.gz')

@@ -4,10 +4,13 @@ import os
 import json
 import uuid
 
+from .cache import cached
+
 class Host(object):
     def __init__(self, mordor, config):
         self.mordor = mordor
         self.config = config
+        self._cache = {}
     
     @property
     def id(self):
@@ -45,6 +48,7 @@ class Host(object):
         return self.config.get('virtualenv')
 
     @property
+    @cached('user_homedir')
     def user_homedir(self):
         # current user's home dir on the host
         if not self.per_user:
@@ -60,6 +64,7 @@ class Host(object):
 
 
     @property
+    @cached('mordor_info')
     def mordor_info(self):
         if self.per_user:
             mordor_dir = os.path.join(self.user_homedir, 'mordor')

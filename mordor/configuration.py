@@ -1,11 +1,14 @@
 import os
+from .cache import cached
 
 class AnonymousConfiguration(object):
     def __init__(self, mordor, config):
         self.mordor = mordor
         self.config = config
+        self._cache = {}
    
     @property
+    @cached('location')
     def location(self):
         v = self.config['location']
         v = os.path.expanduser(v)
@@ -17,6 +20,7 @@ class AnonymousConfiguration(object):
         return self.config['type']
     
     @property
+    @cached('name')
     def name(self):
         if 'name' in self.config:
             return self.config['name']

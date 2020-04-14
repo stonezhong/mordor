@@ -79,10 +79,10 @@ def main():
         "-o", "--host-id", type=str, required=False, help="Host id"
     )
     parser.add_argument(
-        "-p", "--deployment-id", type=str, required=False, help="deployment name"
+        "-t", "--compartment-id", type=str, required=False, help="Host id"
     )
     parser.add_argument(
-        "-s", "--stage", type=str, required=False, help="stage"
+        "-p", "--deployment-id", type=str, required=False, help="deployment name"
     )
     parser.add_argument(
         "--update-venv",
@@ -115,6 +115,19 @@ def main():
         deployment_id = args.deployment_id
         mordor.deployments[args.deployment_id].stage(args)
         return
+    
+    if args.action == "shell":
+        # enter the virtual environment
+        if not args.deployment_id:
+            print("--deployment-id must be specified")
+            return
+        if not args.host_id:
+            print("--host-id must be specified")
+            return
+        deployment_id = args.deployment_id
+        mordor.deployments[args.deployment_id].venv(args)
+        return
+
 
     
     raise Exception("unrecognized action")
