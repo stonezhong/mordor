@@ -487,7 +487,7 @@ def main():
     )
     parser.add_argument(
         "-c", "--config-dir", type=str, required=False, help="Configuration directory",
-        default="~/.mordor"
+        default=os.environ.get("MORDOR_CONFIG_DIR", "~/.mordor")
     )
     args = parser.parse_args()
 
