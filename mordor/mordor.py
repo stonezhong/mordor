@@ -394,7 +394,7 @@ def run_app_on_host(base_dir, config, app, host, cmd):
         host.path("bin", "run_dispatcher.sh"),
         host.env_home,
         app.name,
-        cmd
+        cmd_to_send
     )
     return
 
