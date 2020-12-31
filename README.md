@@ -64,8 +64,9 @@ Here is an example:
     * `deploy_to` is a list of the target's name
     * `use_python3`: set to true if your app need python3
     * the `config` section list all the config file you need to deploy to the target
-    * when looking for config file xyz, mordor lookup the config in `<base_config_dir>/configs/<app_name>/<stage>/xyz`, then then fallbacks to `<base_config_dir>/configs/<app_name>/xyz`
-        * <base_config_dir> is `~/.mordor` by default, or you can use `-c` option to change it.
+    * when looking for config file xyz, mordor lookup the config with the following order
+        1 `<base_config_dir>/configs/<app_name>/<stage>/xyz`
+        2 `<base_config_dir>/configs/<app_name>/xyz`
     * `stage`: the stage of this deployment, if missing, then stage is ""
 
 
