@@ -139,7 +139,7 @@ After modor is initialized on target, target will have a environment variable `E
 
 # Target host mordor file structure
 ```
-<Mordor Home Directory>
+$ENV_HOME
   |
   +-- apps                                  Home directory for all applications
   |     |
