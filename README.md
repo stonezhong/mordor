@@ -6,6 +6,7 @@
     * [Stage application to target](#stage-application-to-target)
     * [Run a command on target](#run-a-command-on-target)
 * [Application Structure](#application-structure)
+* [Target host mordor file structure](#target-host-mordor-file-structure)
 
 # Introduction
 
@@ -123,3 +124,51 @@ mordor \
 # -cmd, the command you want to run when your action is "run"
 # -co, the command arguments when your action is "run"
 ```
+
+# Target host mordor file structure
+```
+<Mordor Home Directory>
+  |
+  +-- apps                                  Home directory for all applications
+  |     |
+  |     +-- <application name>              Home directory for an application
+  |         |
+  |         +-- <version 1>                 Directory for version 1 of application
+  |         |
+  |         +-- <version 2>                 Directory for version 2 of application
+  |         |
+  |         +-- current                     A symlink to the current version
+  |
+  +-- bin                                   Some tools used by mordor
+  |
+  +-- configs                               Home directory for configs for all applications
+  |     |
+  |     +-- <application name>              Config for an application
+  |            |
+  |            +-- config1                  depends on your deployment's `config` settings
+  |            |
+  |            +-- config2
+  |
+  +-- logs                                  Home directory for logs for all applications
+  |     |
+  |     +-- <application name>              Logs for an application
+  |
+  +-- pids                                  Directory for pid for each application
+  |     |
+  |     +-- <application name>.pid          pid for the latest run of an application
+  |
+  +-- venvs                                 Home for virtual envs for all application
+  |     |
+  |     +-- <application name>_<version>    Virtual env for a given application with given version
+  |     |
+  |     +-- <application_name>              A symlink points to the current version
+  |
+  +-- data
+  |     |
+  |     +-- <application name>
+  |
+  +-- temp                                  Temporary directory
+
+```
+
+* stage command does not touch the data directory.
