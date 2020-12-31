@@ -1,6 +1,8 @@
 # Indexes
 * [Introduction](#introduction)
 * [Config](#config)
+    * [Config directory](#config-directory)
+    * [Config structure](#config-structure)
 * [Sample Commands](#sample-commands)
     * [Init target host](#init-target-host)
     * [Stage application to target](#stage-application-to-target)
@@ -13,6 +15,14 @@
 Mordor is a tool helps you to deploy your python project.
 
 # Config
+
+## Config directory
+
+* If you specify `-c` option, mordor uses the config directory you specified after `-c` option
+* If you have environment variable `MORDOR_CONFIG_DIR` set, mordor uses it as config directory
+* Otherwise, mordor uses `~/.mordor` as config directory
+
+
 
 mordor reads config from `~/.mordor/config.json` or if you specify `-c` option to override it, for example if you have `-c /home/stonezhong/testmordor/.mordor` then mordor will read config from `/home/stonezhong/testmordor/.mordor/config.json`
 
