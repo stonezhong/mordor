@@ -183,4 +183,4 @@ $ENV_HOME
 
 ```
 
-* stage command does not touch the data directory.
+Note, `stage` action does not touch the data directory, it only update code and config. So data is kept the same after your `stage` action.
