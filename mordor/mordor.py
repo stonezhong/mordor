@@ -360,7 +360,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     return
 
 
-def run_app(base_dir, config, app_name, stage = None, host_name = None, cmd = "", cmd_opts = ""):
+def run_app(base_dir, config, app_name, stage = None, host_name = None, cmd = ""):
     app = config.get_app(app_name, stage=stage)
     if app is None:
         print("Application {} with stage {} does not exist".format(app_name, stage))
@@ -380,23 +380,21 @@ def run_app(base_dir, config, app_name, stage = None, host_name = None, cmd = ""
 
     for host_name in run_on:
         host = config.get_host(host_name)
-        run_app_on_host(base_dir, config, app, host, cmd, cmd_opts)
+        run_app_on_host(base_dir, config, app, host, cmd)
 
 
-def run_app_on_host(base_dir, config, app, host, cmd, cmd_opts):
+def run_app_on_host(base_dir, config, app, host, cmd):
     print("running application: \"{}\" on host \"{}\"".format(app.name, host.name))
     print("            command: \"{}\"".format(cmd))
-    print("            options: \"{}\"".format(cmd_opts))
 
-    cmd_opts_to_send = base64.b64encode(cmd_opts.encode('utf-8')).decode('utf-8')
+    cmd_to_send = base64.b64encode(cmd.encode('utf-8')).decode('utf-8')
 
 
     host.execute(
         host.path("bin", "run_dispatcher.sh"),
         host.env_home,
         app.name,
-        cmd,
-        cmd_opts_to_send
+        cmd
     )
     return
 
@@ -474,10 +472,6 @@ def main():
         default=""
     )
     parser.add_argument(
-        "-co", "--cmd-opts", type=str, required=False, help="command options",
-        default=""
-    )
-    parser.add_argument(
         "--update-venv",
         type=lambda s: s=='T',
         required=False,
@@ -522,8 +516,7 @@ def main():
             base_dir, config, args.app_name,
             stage = args.stage,
             host_name = args.host_name,
-            cmd = args.cmd,
-            cmd_opts = args.cmd_opts
+            cmd = args.cmd
         )
         return
 
