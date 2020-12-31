@@ -163,7 +163,12 @@ class Config(object):
         for (host_name, host_config) in self.config["hosts"].items():
             self.host_dict[host_name] = HostConfig(host_name, host_config)
         self.app_dict = defaultdict(dict)  # key is deployment_name
-        for (deployment_name, app_config) in self.config["applications"].items():
+
+        deployments = self.config.get("deployments") or self.config.get("applications")
+        if deployments is None:
+            raise Exception("Missing deployments section")
+
+        for (deployment_name, app_config) in deployments.items():
             app = AppConfig(deployment_name, app_config)
             if app.stage in self.app_dict[app.name]:
                 raise Exception("Duplicate: application = {}, stage = {}".format(app.name, app.stage))

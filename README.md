@@ -1,213 +1,125 @@
-# Purpose
+# Indexes
+* [Introduction](#introduction)
+* [Config](#config)
+* [Sample Commands](#sample-commands)
+    * [Init target host](#init-target-host)
+    * [Stage application to target](#stage-application-to-target)
+    * [Run a command on target](#run-a-command-on-target)
+* [Application Structure](#application-structure)
 
-If you have python based application, need to deploy to a fleet of machines and need to constantly update these application, mordor is the right tool for you. You can
+# Introduction
 
-* Deploy your python application to the host fleet
-* Start and stop your python application on the fleet
-* Update your python application on the fleet.
+Mordor is a tool helps you to deploy your python project.
 
-# config
-You need to have a local config file placed in `~/.mordor/config.json`. Here is an example:
-```
+# Config
+
+mordor reads config from `~/.mordor/config.json` or if you specify `-c` option to override it, for example if you have `-c /home/stonezhong/testmordor/.mordor` then mordor will read config from `/home/stonezhong/testmordor/.mordor/config.json`
+
+## Config structure
+Here is an example:
+```json
 {
     "hosts": {
-        "localhost": {
-            "ssh_host"  : "localhost",
-            "env_home"  : "/Users/shizhong/mordor",
-            "virtualenv": "/usr/local/bin/virtualenv",
-            "python3"   : "/usr/local/bin/python3"
-        },
-        "mylinux": {
-            "ssh_host"  : "mylinux",
-            "env_home"  : "/home/SHIZHONG/mordor",
+        "mordortest": {
+            "ssh_host"  : "mordortest",
+            "env_home"  : "/root/mordor",
             "virtualenv": "/usr/bin/virtualenv",
             "python3"   : "/usr/bin/python3"
-        },
-        "test3": {
-            "ssh_host": "test3.deepspace.local",
-            "env_home": "/root/mordor",
-            "virtualenv": "/usr/bin/virtualenv",
-            "ssh_key_filename": "~/.runtime/cloudconfig/home",
-            "ssh_username": "root",
-            "python3": "/usr/bin/python36"
         }
     },
-    "applications": {
-        "sample": {
-            "home_dir"    : "/Users/shizhong/projects/sample",
-            "deploy_to"   : [ "mylinux", "localhost" ],
+    "deployments": {
+        "sample_beta": {
+            "name"        : "sample",
+            "stage"       : "beta",
+            "home_dir"    : "/home/stonezhong/DATA_DISK/projects/mordor/sample",
+            "deploy_to"   : [ "mordortest" ],
             "use_python3" : true,
             "config"      : {
-                "config"         : "convert",
-                "oci_api_key.pem": "copy"
+                "foo.json": "copy"
             }
         }
     }
 }
 ```
 
-## Host Config
+* In `hosts` section, you need to list all your target machine which you want to deploy to.
+    * You need to make sure you can ssh to each machine without entering password, you can config your `~/.ssh/config` if needed
+    * If your target machine support python3, you need to specify python3 location
+    * `env_home` is the root path for mordor, normally you want to point it to a large disk, for example `/mnt/mordor`
+    * `ssh_host` is the name of the host when you do ssh, normally it should match what you have in your `~/.ssh/config` file
+* In `deployments` section, you list all the deployments you want to deploy
+    * `name` is the name of the application, if missing, then the deployment name becomes the application name
+    * `stage` is the name of the stage, usually it is something like `beta`, `prod`, etc, but it can be anything
+        * The same application can have as many stages as it can, but each target can only deploy one stage. For example, you cannot deploy both beta and prod stage of the same app to the same target
+    * `deploy_to` is a list of the target's name
+    * `use_python3`: set to true if your app need python3
+    * the `config` section list all the config file you need to deploy to the target
+    * when looking for config file xyz, mordor lookup the config in `<base_config_dir>/configs/<app_name>/<stage>/xyz`, then then fallbacks to `<base_config_dir>/configs/<app_name>/xyz`
+        * <base_config_dir> is `~/.mordor` by default, or you can use `-c` option to change it.
+    * `stage`: the stage of this deployment, if missing, then stage is ""
 
-* In "hosts", key is host name, value is host config
 
-### ssh_host
-You should be able to ssh to the target host using their ssh_host attribute as host name without entering password.
-You may need to use `ssh-add` command and config your `~/.ssh/config`
+# Sample commands
+## Init target host
+<details>
+<summary>Initialize target host</summary>
 
-### ssh_key_filename
-If you need to use a private key to connect to ssh server, you can specify the key filename here
-
-### ssh_username
-You must provide this if you specify ssh_key_filename. It represent the ssh username
-
-### env_home
-This specify the home directory for mordor.
-
-### virtualenv
-This specify the full path for virtualenv command
-
-### python3
-This specify the full path for python3. You do not need to have this attribute if you do not plan to use python3.
-
-## Application configs
-
-* In applications. key is application deployment name, value is application config. 
+```bash
+# initialize mordor on target host mordortest, using config file from /home/stonezhong/testmordor/.mordor
+mordor -c /home/stonezhong/testmordor/.mordor -a init-host -o mordortest
 ```
-Application deployment name is not application name. It represent a deployment instead of an application. For example, you can have 2 entries under applications, one called "sample_beta" and ther other called "sample_prod", both represent the same application but they deploy to different set or machines for different stages, and they are likely to have different configs. In such case, you can use "name" to specify the application name. E.g.:
+</details>
 
-        "sample_beta": {
-            "name"        : "sample",
-            "stage"       : "beta",
-            "home_dir"    : "/Users/shizhong/projects/sample",
-            "deploy_to"   : [ "localhost" ],
-            "use_python3" : true,
-            "config"      : {
-                "config"         : "convert",
-                "oci_api_key.pem": "copy"
-            }
-        },
-        "sample_prod": {
-            "name"        : "sample",
-            "stage"        : "prod",
-            "home_dir"    : "/Users/shizhong/projects/sample",
-            "deploy_to"   : [ "mylinux"],
-            "use_python3" : true,
-            "config"      : {
-                "config"         : "convert",
-                "oci_api_key.pem": "copy"
-            }
-        },
+## Stage application to target
+<details>
+<summary>Stage application to target</summary>
 
+```bash
+# stage application sample to beta stage
+# the application will be copied to the target machine
+# configuration will be copied to the target machine
+# python virtual environment will be created on target machine
+mordor -c /home/stonezhong/testmordor/.mordor -a stage -p sample -s beta
 ```
+</details>
 
-### home_dir
-This specify where is the application's home directory.
+## Run a command on target
+<details>
+<summary>Run a command on target</summary>
 
-### deploy_to
-This is an array, tells list of host the application will deploy to.
-
-### use_python3
-If true, then this application uses python3. Default is false
-
-### cmd
-optional. Specify a command when you run an application. If can be a bash shell script or a python script. A bash shell script's filename must end with `.sh`, a python script's filename must end with `.py` 
-
-### application config file location
-By default it is located at `~/.mordor/configs/<application_name>/<stage>` or `~/.mordor/configs/<application_name>`
-
-# Host 
-Before a host become usable for mordor, you need to
-* Add host config to your `~/.mordor/config.json`
-* Run `mordor -a init-host --host-name <hostname>` to initialize your host
-
-## Before initialization
-On host of your fleet, 
-* You need to make sure python 2.x is installed. For most of the Linux dist and mac, this is true.
-* If you need to deploy application that uses python3 on this host, you need to install python3
-  * And set python3 in host config  
-* You need to install virtualenv and pip.
-* You need to add entry in hosts sections for every machine you managed.
-
-## Initialization
-Run `mordor.py -a init-host --host-name <hostname>` to initialize your host. The host only need to be initialized once normally.
-Here is a layout of your host directory structure:
+```bash
+# run command
+# application is "sample", stage is "beta", command is "foo" with option "xyz abc"
+mordor -c /home/stonezhong/testmordor/.mordor -a run -p sample -s beta -cmd foo -co "xyz abc"
 ```
-<Mordor Home Directory>
-  |
-  +-- apps                                  Home directory for all applications
-  |     |
-  |     <application name>                  Home directory for an application
-  |         |
-  |         +-- <version 1>                 Directory for version 1 of application
-  |         |
-  |         +-- <version 2>                 Directory for version 2 of application
-  |         |
-  |         +-- current                     A symlink to the current version
-  |
-  +-- bin                                   Some tools used by mordor
-  |
-  +-- configs                               Home directory for configs for all applications
-  |     |
-  |     +-- <application name>              Config for an application
-  |
-  +-- logs                                  Home directory for logs for all applications
-  |     |
-  |     +-- <application name>              Logs for an application
-  |
-  +-- pids                                  Directory for pid for each application
-  |     |
-  |     +-- <application name>.pid          pid for the latest run of an application
-  |
-  +-- venvs                                 Home for virtual envs for all application
-  |     |
-  |     +-- <application name>_<version>    Virtual env for a given application with given version
-  |
-  +-- data
-  |     |
-  |     +-- <application name>
-  |
-  +-- temp                                  Temporary directory
+</details>
+
+# Application Structure
+
+You can look at the [Sample](https://github.com/stonezhong/mordor/tree/master/sample)
+
+* You need to have a manifest.json file, you normally want to bump the version if you make changes to your application.
+* You need to have a requirements.txt in your application root which tells list of packages you need to install
+* Optional, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, this python code will be invoked to handle the command
+
+# Command line options
 ```
+mordor \
+  -c <mordor_config_base> \
+  -a <action> \
+  -o <target_name> \
+  -p <app_name> \
+  -s <stage> \
+  -cmd <your command here> \
+  -co <your command arguments here>
 
-# Stage Your Application
-You can run command `mordor.py -a stage --app-name <application_name>` to stage application to all the host the app is suppose to deploy
-* In `config.json`, the `deploy_to` tells the list of host it will deploy to
-* In application's home directory, there is a file `manifest.json`, it looks like below
+# -c, if missing , mordor looks for config in ~/.mordor
+# -a, action, could be `init-host`, `stage` or `run`
+# -o, specify the the target machine.
+#     for init-host, you must specify this
+#     for stage or run, if missing, then the scope is all the target for the stage
+# -p, the application name
+# -s, the stage name, if missing, the stage name is empty string
+# -cmd, the command you want to run when your action is "run"
+# -co, the command arguments when your action is "run"
 ```
-{
-    "version": "0.0.1"
-}
-```
-The version tells the version of the app, 
-* On each deployable host, app's code will be copied over to `apps/<application_name>/<version>` directory
-    * A sym link will be crate, so you can use `app/<application_name>/current/` as the current version
-* On each deployable host, virtualenv will be created, all required package will be installed.
-    * it looks for `requirements.txt` in your application directory for packages to install
-        * The file above is optional.
-        * It also look for `requirements_pre.txt`, if exist, it will be installed prior to `requirements.txt`
-    * on host, virtual env is a `venvs/<application_name>-<version>`
-    * a symlink will be created in `venvs/<application_name>`
-* All the config file will also be copied over
-    * config file should be stored at `~/.mordor/configs/<application_name>`
-    * the `config` section of application in `config.json` will tell what file need to be copied over
-    * `copy` means simply copy over, `convert` means you can use variable like `env_home` and `app_name` in your config file.
-
-## convert
-
-Your file must be a python format string, with the following variable available
-
-| Variable name | Description                                        |
-|---------------|----------------------------------------------------|
-| env_home      | environment home directory on the host             |
-| app_name      | application name                                   |
-| config_dir    | configuration directory for the app on the host    |
-
-
-# run
-You can run `mordor.py -a run --app-name <application_name>` to run the application, all host deployed will run your application. It will invoke the command you specify in the application's cmd config, or using "run.sh" if missing.
-
-# Application Requirement
-* You need to put a file `requirements.txt` to tell your applications dependency
-* You need to provide a `run.sh` command, this command will be called to launch your program
-
-To see an example, see [sample](./sample)
