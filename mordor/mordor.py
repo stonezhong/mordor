@@ -9,6 +9,7 @@ import json
 import tempfile
 import glob
 from collections import defaultdict
+import base64
 
 
 class HostConfig(object):
@@ -115,10 +116,6 @@ class AppConfig(object):
         return self.app_config["home_dir"]
 
     @property
-    def cmd(self):
-        return self.app_config.get("cmd", "run.sh")
-
-    @property
     def use_python3(self):
         return self.app_config.get("use_python3", False)
 
@@ -159,7 +156,8 @@ class AppConfig(object):
 
 
 class Config(object):
-    def __init__(self, config):
+    def __init__(self, config, config_dir):
+        self.config_dir = config_dir
         self.config = config
         self.host_dict = {}
         for (host_name, host_config) in self.config["hosts"].items():
@@ -217,6 +215,7 @@ def init_host(base_dir, config, host_name):
         "install_packages.sh",
         "run_app.sh",
         "run_app_py.sh",
+        "run_dispatcher.sh",
         "get_app_status.sh",
         "kill_app.sh",
         "init_host.sh",
@@ -313,24 +312,34 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                      )
 
     # allow user to have different configs for different stages
-    config_base_dir = os.path.join(os.path.expanduser("~/.mordor/configs"), app.name)
+    config_base_dir = os.path.join(config.config_dir, "configs", app.name)
+
+    app_config_dirs = []
     if stage is not None:
+        # if stage is specified, we will look if there is a config for the stage
         staged_config_base_dir = os.path.join(config_base_dir, stage)
         if os.path.isdir(staged_config_base_dir):
-            config_base_dir = staged_config_base_dir
+            app_config_dirs.append(staged_config_base_dir)
+
+    app_config_dirs.append(config_base_dir)
+
+    def find_config_filen(name):
+        for prefix in app_config_dirs:
+            full_name = os.path.join(prefix, name)
+            if os.path.isfile(full_name):
+                return full_name
+        raise Exception("Config file {} does not exist!".format(name))
+
 
     for (filename, deploy_type) in app.config.items():
         if deploy_type == "copy":
             host.upload(
-                os.path.join(config_base_dir, filename),
+                find_config_filen(filename),
                 host.path("configs", app.name, filename),
             )
             continue
         if deploy_type == "convert":
-            with open(
-                    os.path.join(config_base_dir, filename),
-                    "r"
-            ) as f:
+            with open(find_config_filen(filename), "r") as f:
                 content = f.read()
             config_dir = os.path.join(host.env_home, "configs", app.name)
             content = content.format(
@@ -346,7 +355,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     return
 
 
-def run_app(base_dir, config, app_name, stage = None, host_name = None):
+def run_app(base_dir, config, app_name, stage = None, host_name = None, cmd = "", cmd_opts = ""):
     app = config.get_app(app_name, stage=stage)
     if app is None:
         print("Application {} with stage {} does not exist".format(app_name, stage))
@@ -366,29 +375,25 @@ def run_app(base_dir, config, app_name, stage = None, host_name = None):
 
     for host_name in run_on:
         host = config.get_host(host_name)
-        run_app_on_host(base_dir, config, app, host)
+        run_app_on_host(base_dir, config, app, host, cmd, cmd_opts)
 
 
-def run_app_on_host(base_dir, config, app, host):
-    print("running application: \"{}\", cmd: \"{}\", on \"{}\"".format(app.name, app.cmd, host.name))
+def run_app_on_host(base_dir, config, app, host, cmd, cmd_opts):
+    print("running application: \"{}\" on host \"{}\"".format(app.name, host.name))
+    print("            command: \"{}\"".format(cmd))
+    print("            options: \"{}\"".format(cmd_opts))
 
-    if app.cmd.endswith(".sh"):
-        host.execute(
-            host.path("bin", "run_app.sh"),
-            host.env_home,
-            app.name,
-            app.cmd
-        )
-        return
-    if app.cmd.endswith(".py"):
-        host.execute(
-            host.path("bin", "run_app_py.sh"),
-            host.env_home,
-            app.name,
-            app.cmd
-        )
-        return
-    print("    Invalid launcher")
+    cmd_opts_to_send = base64.b64encode(cmd_opts.encode('utf-8')).decode('utf-8')
+
+
+    host.execute(
+        host.path("bin", "run_dispatcher.sh"),
+        host.env_home,
+        app.name,
+        cmd,
+        cmd_opts_to_send
+    )
+    return
 
 
 def kill_app(base_dir, config, app_name, stage = None, host_name = None):
@@ -447,7 +452,8 @@ def main():
         description='Mordor deployment tool for python'
     )
     parser.add_argument(
-        "-a", "--action", type=str, required=True, help="action. Could be init-host, stage, run, kill or status"
+        "-a", "--action", type=str, required=True, help="Specify action",
+        choices=['init-host', 'stage', 'run', 'kill', 'status']
     )
     parser.add_argument(
         "-o", "--host-name", type=str, required=False, help="destination host"
@@ -459,18 +465,34 @@ def main():
         "-s", "--stage", type=str, required=False, help="stage"
     )
     parser.add_argument(
+        "-cmd", "--cmd", type=str, required=False, help="command to run",
+        default=""
+    )
+    parser.add_argument(
+        "-co", "--cmd-opts", type=str, required=False, help="command options",
+        default=""
+    )
+    parser.add_argument(
         "--update-venv",
-        type=str,
+        type=lambda s: s=='T',
         required=False,
-        default="T",
-        help="Specify T if you want to update virtualenv, F if not. Default is T"
+        default=True,
+        help="Specify T if you want to update virtualenv, F if not. Default is T",
+        choices=['T', 'F']
+    )
+    parser.add_argument(
+        "-c", "--config-dir", type=str, required=False, help="Configuration directory",
+        default="~/.mordor"
     )
     args = parser.parse_args()
 
     base_dir = os.path.abspath(os.path.dirname(__file__))
 
     # get the config file
-    config = Config(get_json("~/.mordor/config.json"))
+    config = Config(
+        get_json(os.path.join(args.config_dir, 'config.json')),
+        args.config_dir
+    )
 
     if args.action == "init-host":
         if not args.host_name:
@@ -484,7 +506,7 @@ def main():
             print("--app-name must be specified")
             return
         stage_app(
-            base_dir, config, args.app_name, args.update_venv == 'T', 
+            base_dir, config, args.app_name, args.update_venv,
             stage = args.stage,
             host_name = args.host_name
         )
@@ -492,16 +514,18 @@ def main():
 
     if args.action == "run":
         run_app(
-            base_dir, config, args.app_name, 
-            stage = args.stage, 
-            host_name = args.host_name
+            base_dir, config, args.app_name,
+            stage = args.stage,
+            host_name = args.host_name,
+            cmd = args.cmd,
+            cmd_opts = args.cmd_opts
         )
         return
 
     if args.action == "kill":
         kill_app(
-            base_dir, config, args.app_name, 
-            stage = args.stage, 
+            base_dir, config, args.app_name,
+            stage = args.stage,
             host_name = args.host_name
         )
         return
