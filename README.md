@@ -111,7 +111,7 @@ You can look at the [Sample](https://github.com/stonezhong/mordor/tree/master/sa
 
 * You need to have a manifest.json file, you normally want to bump the version if you make changes to your application.
 * You need to have a requirements.txt in your application root which tells list of packages you need to install
-* Optional, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, this python code will be invoked to handle the command
+* Optionally, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, `dispatch.py` owns the action on the command. For details, see [dispatch.py](https://github.com/stonezhong/mordor/blob/master/sample/dispatch.py) as example.
 
 # Command line options
 ```
