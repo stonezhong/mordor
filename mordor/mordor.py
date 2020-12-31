@@ -483,7 +483,7 @@ def main():
         required=False,
         default=True,
         help="Specify T if you want to update virtualenv, F if not. Default is T",
-        choices=['T', 'F']
+        choices=[True, False]
     )
     parser.add_argument(
         "-c", "--config-dir", type=str, required=False, help="Configuration directory",
