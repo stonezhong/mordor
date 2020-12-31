@@ -121,8 +121,7 @@ mordor \
   -o <target_name> \
   -p <app_name> \
   -s <stage> \
-  -cmd <your command here> \
-  -co <your command arguments here>
+  -cmd="<your command here>"
 
 # -c, if missing , mordor looks for config in ~/.mordor
 # -a, action, could be `init-host`, `stage` or `run`
@@ -132,8 +131,10 @@ mordor \
 # -p, the application name
 # -s, the stage name, if missing, the stage name is empty string
 # -cmd, the command you want to run when your action is "run"
-# -co, the command arguments when your action is "run"
 ```
+
+# Environment ENV_HOME
+After modor is initialized on target, target will have a environment variable `ENV_HOME`, set to the `env_home` setting from your host setting of your mordor config file.
 
 # Target host mordor file structure
 ```
