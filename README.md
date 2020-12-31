@@ -7,6 +7,7 @@
     * [Init target host](#init-target-host)
     * [Stage application to target](#stage-application-to-target)
     * [Run a command on target](#run-a-command-on-target)
+* [Environment ENV_HOME](#environment-env_home)
 * [Application Structure](#application-structure)
 * [Target host mordor file structure](#target-host-mordor-file-structure)
 
