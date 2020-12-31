@@ -20,9 +20,9 @@ Mordor is a tool helps you to deploy your python project.
 
 Mordor locates the config directory with the following order:
 
-* 1) The config directory you specified after `-c` option
-* 2) Specified by environment variable `MORDOR_CONFIG_DIR`
-* 3) Uses `~/.mordor`
+1) The config directory you specified after `-c` option
+2) Specified by environment variable `MORDOR_CONFIG_DIR`
+3) Uses `~/.mordor`
 
 
 ## Config structure
