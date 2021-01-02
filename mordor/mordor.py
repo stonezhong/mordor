@@ -53,11 +53,12 @@ class HostConfig(object):
                 "ssh",
                 "-i",
                 "-t",
+                "-q",
                 self.ssh_key_filename,
                 "{}@{}".format(self.ssh_username, self.ssh_host)
             ]
         else:
-            new_args = ["ssh", "-t", self.ssh_host]
+            new_args = ["ssh", "-q", "-t", self.ssh_host]
         new_args.extend(args)
         subprocess.call(new_args)
 
