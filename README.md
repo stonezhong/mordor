@@ -91,7 +91,7 @@ mordor -c /home/stonezhong/testmordor/.mordor -a init-host -o mordortest
 # the application will be copied to the target machine
 # configuration will be copied to the target machine
 # python virtual environment will be created on target machine
-mordor -c /home/stonezhong/testmordor/.mordor -a stage -p sample -s beta
+mordor -c /home/stonezhong/testmordor/.mordor -a stage -p sample -s beta --update-venv
 ```
 </details>
 
@@ -122,9 +122,11 @@ mordor \
   -o <target_name> \
   -p <app_name> \
   -s <stage> \
+  [--update-venv] \
+  [--config-only] \
   -cmd="<your command here>"
 
-# -c, if missing , mordor looks for config in ~/.mordor
+# -c, optional, you can specify the mordir configration directory location
 # -a, action, could be `init-host`, `stage` or `run`
 # -o, specify the the target machine.
 #     for init-host, you must specify this
@@ -132,6 +134,8 @@ mordor \
 # -p, the application name
 # -s, the stage name, if missing, the stage name is empty string
 # -cmd, the command you want to run when your action is "run"
+# --update-venv, optional, when specified, mordor will update python virtual environment for the app
+# --config-only, optional, when specified, mordor only update the application config.
 ```
 
 # Environment ENV_HOME

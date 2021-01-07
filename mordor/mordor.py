@@ -239,7 +239,7 @@ def init_host(base_dir, config, host_name):
     host.execute(host.path("bin", "init_host.sh"), host.env_home)
 
 # stage an python application on the target host
-def stage_app(base_dir, config, app_name, update_venv, stage=None, host_name=None):
+def stage_app(base_dir, config, app_name, update_venv, config_only, stage=None, host_name=None):
     app = config.get_app(app_name, stage=stage)
     if app is None:
         print("Application {} with stage {} does not exist".format(app_name, stage))
@@ -247,7 +247,11 @@ def stage_app(base_dir, config, app_name, update_venv, stage=None, host_name=Non
 
     # archive the entire app and send it to host
     # tar -czf /tmp/a.tar.gz -C $PWD *
-    archive_filename = app.create_archive()
+    if not config_only:
+        archive_filename = app.create_archive()
+    else:
+        archive_filename = None
+
     if host_name is not None:
         deploy_to = [host_name]
     else:
@@ -262,61 +266,66 @@ def stage_app(base_dir, config, app_name, update_venv, stage=None, host_name=Non
 
     for host_name in deploy_to:
         host = config.get_host(host_name)
-        stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, stage=stage)
+        stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, config_only, stage=stage)
 
 
-def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, stage=None):
+def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv, config_only, stage=None):
     print("stage application \"{}\" for stage \"{}\" on host \"{}\"".format(
         app.name, app.stage, host.name
     ))
+    print("    update_venv: {}".format(update_venv))
+    print("    config_only: {}".format(config_only))
+    print("")
+
     # copy app archive to remote host
-    host.upload(archive_filename, host.path("temp", app.archive_filename))
+    if not config_only:
+        host.upload(archive_filename, host.path("temp", app.archive_filename))
 
-    # create directorys
-    host.execute("mkdir", "-p", host.path("apps", app.name))
-    host.execute("mkdir", "-p", host.path("apps", app.name, app.manifest.version))
-    host.execute("rm", "-rf", host.path("apps", app.name, app.manifest.version, "*"))
-    host.execute("mkdir", "-p", host.path("logs", app.name))
-    host.execute("mkdir", "-p", host.path("configs", app.name))
-    host.execute("mkdir", "-p", host.path("data", app.name))
+        # create directorys
+        host.execute("mkdir", "-p", host.path("apps", app.name))
+        host.execute("mkdir", "-p", host.path("apps", app.name, app.manifest.version))
+        host.execute("rm", "-rf", host.path("apps", app.name, app.manifest.version, "*"))
+        host.execute("mkdir", "-p", host.path("logs", app.name))
+        host.execute("mkdir", "-p", host.path("configs", app.name))
+        host.execute("mkdir", "-p", host.path("data", app.name))
 
-    # remove and re-create the sym link point to the current version of the app
-    host.execute("rm", "-f", host.path("apps", app.name, "current"))
-    host.execute(
-        "ln",
-        "-s",
-        host.path("apps", app.name, app.manifest.version),
-        host.path("apps", app.name, "current")
-    )
-
-    # extract app archive
-    host.execute(
-        'tar',
-        '-xzf',
-        host.path("temp", app.archive_filename),
-        "-C",
-        host.path("apps", app.name, app.manifest.version)
-    )
-
-    # recreate venv since dependencies may have changed
-    if update_venv:
-        host.execute("rm", "-rf", host.path("venvs", app.venv_name))
-        if app.use_python3:
-            host.execute(host.virtualenv, "-p", host.python3, host.path("venvs", app.venv_name))
-        else:
-            host.execute(host.virtualenv, host.path("venvs", app.venv_name))
+        # remove and re-create the sym link point to the current version of the app
+        host.execute("rm", "-f", host.path("apps", app.name, "current"))
         host.execute(
-            host.path("bin", "install_packages.sh"),
-            host.env_home,
-            app.name,
-            app.manifest.version
+            "ln",
+            "-s",
+            host.path("apps", app.name, app.manifest.version),
+            host.path("apps", app.name, "current")
         )
-        # create a symlink
-        host.execute("rm", "-f", host.path("venvs", app.name))
-        host.execute("ln", "-s",
-                     host.path("venvs", app.venv_name),
-                     host.path("venvs", app.name)
-                     )
+
+        # extract app archive
+        host.execute(
+            'tar',
+            '-xzf',
+            host.path("temp", app.archive_filename),
+            "-C",
+            host.path("apps", app.name, app.manifest.version)
+        )
+
+        # recreate venv since dependencies may have changed
+        if update_venv:
+            host.execute("rm", "-rf", host.path("venvs", app.venv_name))
+            if app.use_python3:
+                host.execute(host.virtualenv, "-p", host.python3, host.path("venvs", app.venv_name))
+            else:
+                host.execute(host.virtualenv, host.path("venvs", app.venv_name))
+            host.execute(
+                host.path("bin", "install_packages.sh"),
+                host.env_home,
+                app.name,
+                app.manifest.version
+            )
+            # create a symlink
+            host.execute("rm", "-f", host.path("venvs", app.name))
+            host.execute("ln", "-s",
+                        host.path("venvs", app.venv_name),
+                        host.path("venvs", app.name)
+                        )
 
     # allow user to have different configs for different stages
     config_base_dir = os.path.join(config.config_dir, "configs", app.name)
@@ -475,17 +484,23 @@ def main():
     )
     parser.add_argument(
         "--update-venv",
-        type=lambda s: s=='T',
-        required=False,
-        default=True,
-        help="Specify T if you want to update virtualenv, F if not. Default is T",
-        choices=[True, False]
+        action="store_true",
+        help="Specify if you want to update virtualenv",
+    )
+    parser.add_argument(
+        "--config-only",
+        action="store_true",
+        help="Specify if you want to stage configuration only",
     )
     parser.add_argument(
         "-c", "--config-dir", type=str, required=False, help="Configuration directory",
         default=os.environ.get("MORDOR_CONFIG_DIR", "~/.mordor")
     )
     args = parser.parse_args()
+
+    # validate options
+    if args.update_venv and args.config_only:
+        raise Exception("You cannot specify --update-venv and --config-only both")
 
     base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -507,7 +522,7 @@ def main():
             print("--app-name must be specified")
             return
         stage_app(
-            base_dir, config, args.app_name, args.update_venv,
+            base_dir, config, args.app_name, args.update_venv, args.config_only,
             stage = args.stage,
             host_name = args.host_name
         )
