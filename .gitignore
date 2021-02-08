@@ -3,3 +3,5 @@ mordor2.egg-info/
 dist/
 build/
 __pycache__/
+.venv_build
+.venv_test
