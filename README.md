@@ -1,6 +1,6 @@
 # Indexes
 * [Introduction](#introduction)
-* [Developers' guide](#Developers_guide)
+* [Developers' guide](#developers-guide)
 * [Config](#config)
     * [Config directory](#config-directory)
     * [Config structure](#config-structure)
