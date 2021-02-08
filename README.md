@@ -1,5 +1,6 @@
 # Indexes
 * [Introduction](#introduction)
+* [Developers' guide](#Developers_guide)
 * [Config](#config)
     * [Config directory](#config-directory)
     * [Config structure](#config-structure)
@@ -14,6 +15,9 @@
 # Introduction
 
 Mordor is a tool helps you to deploy your python project.
+
+# Developers' guide
+This is for developers who want to adding features or fix bugs for mordor. Please see [For Developers](for_developers.md)
 
 # Config
 
