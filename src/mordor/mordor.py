@@ -339,7 +339,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
 
     app_config_dirs.append(config_base_dir)
 
-    def find_config_filen(name):
+    def find_config_filename(name):
         for prefix in app_config_dirs:
             full_name = os.path.join(prefix, name)
             if os.path.isfile(full_name):
@@ -350,12 +350,12 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     for (filename, deploy_type) in app.config.items():
         if deploy_type == "copy":
             host.upload(
-                find_config_filen(filename),
+                find_config_filename(filename),
                 host.path("configs", app.name, filename),
             )
             continue
         if deploy_type == "convert":
-            with open(find_config_filen(filename), "r") as f:
+            with open(find_config_filename(filename), "r") as f:
                 content = f.read()
             config_dir = os.path.join(host.env_home, "configs", app.name)
             content = content.format(
@@ -505,9 +505,10 @@ def main():
     base_dir = os.path.abspath(os.path.dirname(__file__))
 
     # get the config file
+    config_dir = os.path.expanduser(args.config_dir)
     config = Config(
         get_json(os.path.join(args.config_dir, 'config.json')),
-        args.config_dir
+        config_dir
     )
 
     if args.action == "init-host":
