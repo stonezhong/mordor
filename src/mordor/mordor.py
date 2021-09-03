@@ -141,10 +141,14 @@ class AppConfig(object):
     def venv_name(self):
         return "{}-{}".format(self.name, self.manifest.version)
 
+
     def create_archive(self):
         temp_dir = tempfile.mkdtemp()
-        args = [
-            'tar',
+        exclude_opts = [ ]
+        for exclude_dir in self.manifest.exclude_dirs:
+            exclude_opts.extend(["--exclude", exclude_dir])
+
+        args = ['tar'] + exclude_opts + [
             '-czf',
             os.path.join(temp_dir, self.archive_filename),
             "-C",
@@ -196,6 +200,10 @@ class AppManifest(object):
     @property
     def version(self):
         return self.manifest["version"]
+
+    @property
+    def exclude_dirs(self):
+        return self.manifest.get("exclude_dirs", [])
 
 
 # Initialize a given server so it can run python code
