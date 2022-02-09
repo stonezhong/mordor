@@ -10,7 +10,7 @@ import tempfile
 import glob
 from collections import defaultdict
 import base64
-
+import shutil
 
 class HostConfig(object):
     def __init__(self, host_name, host_config):
@@ -47,14 +47,34 @@ class HostConfig(object):
     def path(self, *args):
         return os.path.join(self.env_home, *args)
 
+    def execute_batch(self, lines):
+        with tempfile.NamedTemporaryFile(delete=True) as f:
+            for line in lines:
+                f.write(f"{line}\n".encode("utf-8"))
+            f.write(f"exit\n".encode("utf-8"))
+            f.seek(0)
+
+            if self.ssh_key_filename:
+                new_args = [
+                    "ssh",
+                    "-i",
+                    self.ssh_key_filename,
+                    "-q",
+                    "{}@{}".format(self.ssh_username, self.ssh_host)
+                ]
+            else:
+                new_args = ["ssh", "-q", self.ssh_host]
+            subprocess.call(new_args, stdin=f)
+
+
     def execute(self, *args):
         if self.ssh_key_filename:
             new_args = [
                 "ssh",
                 "-i",
+                self.ssh_key_filename,
                 "-t",
                 "-q",
-                self.ssh_key_filename,
                 "{}@{}".format(self.ssh_username, self.ssh_host)
             ]
         else:
@@ -78,6 +98,25 @@ class HostConfig(object):
         (output, err) = p.communicate()
         p_status = p.wait()
         return (output, err)
+
+    def upload_batch(self, local_path, remote_path):
+        if self.ssh_key_filename:
+            new_args = [
+                "scp", "-r", "-q", "-i", self.ssh_key_filename,
+                local_path,
+                "{}@{}:{}".format(
+                    self.ssh_username,
+                    self.ssh_host, remote_path
+                )
+            ]
+        else:
+            new_args = [
+                "scp", "-r", "-q",
+                local_path,
+                "{}:{}".format(self.ssh_host, remote_path)
+            ]
+
+        subprocess.call(new_args)
 
     def upload(self, local_path, remote_path):
         if self.ssh_key_filename:
@@ -281,70 +320,14 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     print("stage application \"{}\" for stage \"{}\" on host \"{}\"".format(
         app.name, app.stage, host.name
     ))
-    print("    update_venv: {}".format(update_venv))
-    print("    config_only: {}".format(config_only))
-    print("")
-
-    # copy app archive to remote host
-    if not config_only:
-        host.upload(archive_filename, host.path("temp", app.archive_filename))
-
-        # create directorys
-        host.execute("mkdir", "-p", host.path("apps", app.name))
-        host.execute("mkdir", "-p", host.path("apps", app.name, app.manifest.version))
-        host.execute("rm", "-rf", host.path("apps", app.name, app.manifest.version, "*"))
-        host.execute("mkdir", "-p", host.path("logs", app.name))
-        host.execute("mkdir", "-p", host.path("configs", app.name))
-        host.execute("mkdir", "-p", host.path("data", app.name))
-
-        # remove and re-create the sym link point to the current version of the app
-        host.execute("rm", "-f", host.path("apps", app.name, "current"))
-        host.execute(
-            "ln",
-            "-s",
-            host.path("apps", app.name, app.manifest.version),
-            host.path("apps", app.name, "current")
-        )
-
-        # extract app archive
-        host.execute(
-            'tar',
-            '-xzf',
-            host.path("temp", app.archive_filename),
-            "-C",
-            host.path("apps", app.name, app.manifest.version)
-        )
-
-        # recreate venv since dependencies may have changed
-        if update_venv:
-            host.execute("rm", "-rf", host.path("venvs", app.venv_name))
-            if app.use_python3:
-                host.execute(host.python3, "-m", "venv", host.path("venvs", app.venv_name))
-            else:
-                host.execute(host.virtualenv, host.path("venvs", app.venv_name))
-            host.execute(
-                host.path("bin", "install_packages.sh"),
-                host.env_home,
-                app.name,
-                app.manifest.version
-            )
-            # create a symlink
-            host.execute("rm", "-f", host.path("venvs", app.name))
-            host.execute("ln", "-s",
-                        host.path("venvs", app.venv_name),
-                        host.path("venvs", app.name)
-                        )
-
     # allow user to have different configs for different stages
     config_base_dir = os.path.join(config.config_dir, "configs", app.name)
-
     app_config_dirs = []
     if stage is not None:
         # if stage is specified, we will look if there is a config for the stage
         staged_config_base_dir = os.path.join(config_base_dir, stage)
         if os.path.isdir(staged_config_base_dir):
             app_config_dirs.append(staged_config_base_dir)
-
     app_config_dirs.append(config_base_dir)
 
     def find_config_filename(name):
@@ -354,12 +337,17 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                 return full_name
         raise Exception("Config file {} does not exist!".format(name))
 
-
+    # creating local staging area for upload file via scp
+    temp_dir = tempfile.mkdtemp()
+    local_stage_dir = os.path.join(temp_dir, app.name)
+    os.makedirs(local_stage_dir)
+    if not config_only:
+        shutil.copyfile(archive_filename, os.path.join(local_stage_dir, app.archive_filename))
     for (filename, deploy_type) in app.config.items():
         if deploy_type == "copy":
-            host.upload(
+            shutil.copyfile(
                 find_config_filename(filename),
-                host.path("configs", app.name, filename),
+                os.path.join(local_stage_dir, filename)
             )
             continue
         if deploy_type == "convert":
@@ -371,11 +359,63 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                 env_home=host.env_home,
                 app_name=app.name
             )
-            tf = tempfile.NamedTemporaryFile(delete=False)
-            tf.file.write(content.encode("utf-8"))
-            tf.file.close()
-            host.upload(tf.name, host.path("configs", app.name, filename))
+            with open(os.path.join(local_stage_dir, filename), "w") as sf:
+                sf.write(content.encode("utf-8"))
             continue
+    if not config_only:
+        print("    Upload application and configuration ... ", end="", flush=True)
+    else:
+        print("    Upload configuration ... ", end="", flush=True)
+    host.upload_batch(local_stage_dir, host.path("temp"))
+    print("Done!")
+    
+    # copy app archive to remote host
+    lines = []
+    if not config_only:
+        # create directorys
+        lines.extend([
+            f"mkdir -p {host.path('apps', app.name)}",
+            f"mkdir -p {host.path('apps', app.name, app.manifest.version)}",
+            f"rm -rf {host.path('apps', app.name, app.manifest.version, '*')}",
+            f"mkdir -p {host.path('logs', app.name)}",
+            f"mkdir -p {host.path('configs', app.name)}",
+            f"mkdir -p {host.path('data', app.name)}",
+            # remove and re-create the sym link point to the current version of the app
+            f"rm -f {host.path('apps', app.name, 'current')}",
+            f"ln -s {host.path('apps', app.name, app.manifest.version)} {host.path('apps', app.name, 'current')}",
+            # extract app archive
+            f"tar -xzf {host.path('temp', app.name, app.archive_filename)} -C {host.path('apps', app.name, app.manifest.version)}",
+        ])
+    # move config file from temp dir
+    for filename in app.config.keys():
+        lines.append(f"mv {host.path('temp', app.name, filename)} {host.path('configs', app.name, filename)}")
+    if not config_only:
+        # finally, let's remove the archive_filename and staging area in temp
+        lines.append(f"rm {host.path('temp', app.name, app.archive_filename)}")
+    lines.append(f"rmdir {host.path('temp', app.name)}")
+
+    if not config_only:
+        # recreate venv since dependencies may have changed
+        if update_venv:
+            lines.append(f"rm -rf {host.path('venvs', app.venv_name)}")
+            if app.use_python3:
+                lines.append(f"{host.python3} -m venv {host.path('venvs', app.venv_name)}")
+            else:
+                lines.append(f"{host.virtualenv} {host.path('venvs', app.venv_name)}")
+            lines.append(f"{host.path('bin', 'install_packages.sh')} {host.env_home} {app.name} {app.manifest.version}")
+            lines.append(f"rm -f {host.path('venvs', app.name)}")
+            # create a symlink
+            lines.append(f"ln -s {host.path('venvs', app.venv_name)} {host.path('venvs', app.name)}")
+            print("    Update application, configuration and virtual environment ... ", end="", flush=True)
+        else:
+            print("    Update application and configuration ... ", end="", flush=True)
+    else:
+        print("    Update configuration ... ", end="", flush=True)
+
+    host.execute_batch(lines)
+    print("Done!")
+    print("")
+
     return
 
 
