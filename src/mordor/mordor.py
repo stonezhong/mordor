@@ -360,7 +360,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                 app_name=app.name
             )
             with open(os.path.join(local_stage_dir, filename), "w") as sf:
-                sf.write(content.encode("utf-8"))
+                sf.write(content)
             continue
     if not config_only:
         print("    Upload application and configuration ... ", end="", flush=True)
