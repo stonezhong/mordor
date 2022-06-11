@@ -10,6 +10,6 @@ deployments:
         home_dir: ./src
         deploy_to:
             - localhost
-        use_python3: Yes,
+        use_python3: Yes
         config:
             foo.json: copy
