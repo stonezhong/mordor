@@ -29,9 +29,11 @@ Mordor locates the config directory with the following order:
 2) Specified by environment variable `MORDOR_CONFIG_DIR`
 3) Uses `~/.mordor`
 
+* config file could be in yaml format, in such case, filename should be "config.yaml"
+* config file could be in json format, in such case, filename should be "config.json"
 
 ## Config structure
-Here is an example:
+Here is an example `config.json`:
 ```json
 {
     "hosts": {
@@ -57,11 +59,31 @@ Here is an example:
 }
 ```
 
+or in yaml format `config.yaml`:
+```yaml
+hosts:
+    mordortest:
+        ssh_host: mordortest
+        env_home: /root/mordor
+        python3: /usr/bin/python3
+deployments:
+    sample_beta:
+        name: sample
+        stage: beta
+        home_dir: /home/stonezhong/DATA_DISK/projects/mordor/sample
+        deploy_to:
+            - mordortest
+        use_python3: Yes,
+        config:
+            - foo.json: copy
+```
+
 * In `hosts` section, you need to list all your target machine which you want to deploy to.
     * You need to make sure you can ssh to each machine without entering password, you can config your `~/.ssh/config` if needed
     * If your target machine support python3, you need to specify python3 location
     * `env_home` is the root path for mordor, normally you want to point it to a large disk, for example `/mnt/mordor`
     * `ssh_host` is the name of the host when you do ssh, normally it should match what you have in your `~/.ssh/config` file
+    * `virtualenv` specify the virtualenv command on the target host, only for python2. For python3, we use the `venv` module which is built-in with python3.
 * In `deployments` section, you list all the deployments you want to deploy
     * `name` is the name of the application, if missing, then the deployment name becomes the application name
     * `stage` is the name of the stage, usually it is something like `beta`, `prod`, etc, but it can be anything
@@ -74,6 +96,7 @@ Here is an example:
         * `<base_config_dir>/configs/<app_name>/xyz`
     * `stage`: the stage of this deployment, if missing, then stage is ""
 
+Please visit [here](sample/readme.md) for a working example.
 
 # Sample commands
 ## Init target host
