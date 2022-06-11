@@ -1,0 +1,3 @@
+version: 0.0.1
+exclude_dirs: 
+  - dir_ignore

@@ -6,6 +6,7 @@ import argparse
 import subprocess
 import os
 import json
+import yaml
 import tempfile
 import glob
 from collections import defaultdict
@@ -142,7 +143,18 @@ class AppConfig(object):
     def __init__(self, deployment_name, app_config):
         self.app_config = app_config
         self.deployment_name = deployment_name
-        self.manifest = AppManifest(get_json(self.path("manifest.json")))
+
+        self.manifest = None
+        for manifest_filename in [
+            self.path("manifest.yaml"), 
+            self.path("manifest.json"),
+        ]:
+            if manifest_filename is not None and os.path.isfile(manifest_filename):
+                self.manifest = AppManifest(get_config(manifest_filename))
+                break
+        if self.manifest is None:
+            raise Exception("Missing manifest file")
+        
 
     @property
     def stage(self):
@@ -227,9 +239,22 @@ class Config(object):
         return self.app_dict[app_name].get(stage)
 
 
+def get_config(path):
+    if path.endswith(".json"):
+        return get_json(path)
+    if path.endswith(".yaml"):
+        return get_yaml(path)
+    assert False, "Impossible"
+
+
 def get_json(path):
     with open(os.path.expanduser(path), "r") as f:
         return json.load(f)
+
+
+def get_yaml(path):
+    with open(os.path.expanduser(path), "r") as f:
+        return yaml.safe_load(f)
 
 
 class AppManifest(object):
@@ -329,11 +354,15 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
         if os.path.isdir(staged_config_base_dir):
             app_config_dirs.append(staged_config_base_dir)
     app_config_dirs.append(config_base_dir)
+    print(">>>")
+    print(app_config_dirs)
+    print("<<<")
 
     def find_config_filename(name):
         for prefix in app_config_dirs:
             full_name = os.path.join(prefix, name)
             if os.path.isfile(full_name):
+                print(full_name)
                 return full_name
         raise Exception("Config file {} does not exist!".format(name))
 
@@ -554,10 +583,18 @@ def main():
 
     # get the config file
     config_dir = os.path.expanduser(args.config_dir)
-    config = Config(
-        get_json(os.path.join(args.config_dir, 'config.json')),
-        config_dir
-    )
+    for filename in [
+        os.path.join(args.config_dir, 'config.yaml'),
+        os.path.join(args.config_dir, 'config.json'),
+        None
+    ]:
+        print(f"{filename}")
+        if filename is not None and os.path.isfile(filename):
+            break
+    if filename is None:
+        raise Exception(f"Missing config file in directory {args.config_dir}")
+
+    config = Config(get_config(filename), config_dir)
 
     if args.action == "init-host":
         if not args.host_name:
