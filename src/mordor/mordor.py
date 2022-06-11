@@ -149,7 +149,7 @@ class AppConfig(object):
             self.path("manifest.yaml"), 
             self.path("manifest.json"),
         ]:
-            if manifest_filename is not None and os.path.isfile(manifest_filename):
+            if os.path.isfile(manifest_filename):
                 self.manifest = AppManifest(get_config(manifest_filename))
                 break
         if self.manifest is None:
@@ -354,15 +354,11 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
         if os.path.isdir(staged_config_base_dir):
             app_config_dirs.append(staged_config_base_dir)
     app_config_dirs.append(config_base_dir)
-    print(">>>")
-    print(app_config_dirs)
-    print("<<<")
 
     def find_config_filename(name):
         for prefix in app_config_dirs:
             full_name = os.path.join(prefix, name)
             if os.path.isfile(full_name):
-                print(full_name)
                 return full_name
         raise Exception("Config file {} does not exist!".format(name))
 
@@ -588,7 +584,6 @@ def main():
         os.path.join(args.config_dir, 'config.json'),
         None
     ]:
-        print(f"{filename}")
         if filename is not None and os.path.isfile(filename):
             break
     if filename is None:
