@@ -14,11 +14,11 @@ python3 -m pip install pip setuptools --upgrade
 python3 -m pip install mordor2
 
 # now checkout the example
-https://github.com/stonezhong/mordor.git
+git clone https://github.com/stonezhong/mordor.git
 cd mordor/sample
 
 # now initialize the target host
-mordor -a init-host -o localhost
+mordor -c config -a init-host -o localhost
 ```
 
 # Step 3: stage application "sample"
