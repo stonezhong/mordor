@@ -112,7 +112,7 @@ app_name
 ```
 * "template" -- the config is a jinja template string, you can refer the following context:
 ```
-host
+host_name
 config_dir
 log_dir
 data_dir

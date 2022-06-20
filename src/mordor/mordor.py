@@ -351,7 +351,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     app_config_dirs = []
     if stage is not None:
         # look for host specific config first
-        host_config_base_dir = os.path.join(config_base_dir, stage, host)
+        host_config_base_dir = os.path.join(config_base_dir, stage, host.name)
         if os.path.isdir(host_config_base_dir):
             app_config_dirs.append(host_config_base_dir)
 
@@ -399,7 +399,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
             with open(find_config_filename(filename), "rt") as f:
                 template = Template(f.read())
                 context = {
-                    "host"      : host,
+                    "host_name" : host.name,
                     "config_dir": os.path.join(host.env_home, "configs", app.name),
                     "log_dir"   : os.path.join(host.env_home, "logs", app.name),
                     "data_dir"  : os.path.join(host.env_home, "data", app.name),
