@@ -12,6 +12,7 @@ import glob
 from collections import defaultdict
 import base64
 import shutil
+from jinja2 import Template
 
 class HostConfig(object):
     def __init__(self, host_name, host_config):
@@ -146,7 +147,7 @@ class AppConfig(object):
 
         self.manifest = None
         for manifest_filename in [
-            self.path("manifest.yaml"), 
+            self.path("manifest.yaml"),
             self.path("manifest.json"),
         ]:
             if os.path.isfile(manifest_filename):
@@ -154,7 +155,7 @@ class AppConfig(object):
                 break
         if self.manifest is None:
             raise Exception("Missing manifest file")
-        
+
 
     @property
     def stage(self):
@@ -349,11 +350,18 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
     config_base_dir = os.path.join(config.config_dir, "configs", app.name)
     app_config_dirs = []
     if stage is not None:
+        # look for host specific config first
+        host_config_base_dir = os.path.join(config_base_dir, stage, host)
+        if os.path.isdir(host_config_base_dir):
+            app_config_dirs.append(host_config_base_dir)
+
         # if stage is specified, we will look if there is a config for the stage
         staged_config_base_dir = os.path.join(config_base_dir, stage)
         if os.path.isdir(staged_config_base_dir):
             app_config_dirs.append(staged_config_base_dir)
-    app_config_dirs.append(config_base_dir)
+
+        if os.path.isdir(config_base_dir):
+            app_config_dirs.append(config_base_dir)
 
     def find_config_filename(name):
         for prefix in app_config_dirs:
@@ -387,13 +395,28 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
             with open(os.path.join(local_stage_dir, filename), "w") as sf:
                 sf.write(content)
             continue
+        if deploy_type == "template":
+            with open(find_config_filename(filename), "rt") as f:
+                template = Template(f.read())
+                context = {
+                    "host"      : host,
+                    "config_dir": os.path.join(host.env_home, "configs", app.name),
+                    "log_dir"   : os.path.join(host.env_home, "logs", app.name),
+                    "data_dir"  : os.path.join(host.env_home, "data", app.name),
+                    "env_home"  : host.env_home,
+                    "app_name"  : app.name
+                }
+            with open(os.path.join(local_stage_dir, filename), "wt") as sf:
+                sf.write(template.render(context))
+            continue
+
     if not config_only:
         print("    Upload application and configuration ... ", end="", flush=True)
     else:
         print("    Upload configuration ... ", end="", flush=True)
     host.upload_batch(local_stage_dir, host.path("temp"))
     print("Done!")
-    
+
     # copy app archive to remote host
     lines = []
     if not config_only:

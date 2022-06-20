@@ -96,6 +96,30 @@ deployments:
         * `<base_config_dir>/configs/<app_name>/xyz`
     * `stage`: the stage of this deployment, if missing, then stage is ""
 
+## Deal with application configs
+When mordor looks for a config whose name is `config_name` to deploy on a host, it looks for it in the following order:
+* host specific directory, in `{base_config_dir}/configs/{app_name}/{stage}/{host_name}/{config_name}`
+* stage specific directory, in `{base_config_dir}/configs/{app_name}/{stage}/{config_name}`
+* in config directory, in `{base_config_dir}/configs/{app_name}/{config_name}`
+
+We support 3 types of configs:
+* "copy" -- it simply copy the config to the host
+* "convert" -- the config is a python template string, you can refer the following context:
+```
+config_dir
+env_home
+app_name
+```
+* "template" -- the config is a jinja template string, you can refer the following context:
+```
+host
+config_dir
+log_dir
+data_dir
+env_home
+app_name
+```
+
 Please visit [here](sample/readme.md) for a working example.
 
 # Sample commands

@@ -1,5 +1,6 @@
 import os
 import json
+import yaml
 
 class AppEnv(object):
     def __init__(self, app_name):
@@ -24,3 +25,18 @@ class AppEnv(object):
         )
         with open(full_path, "r") as f:
             return json.load(f)
+
+    def get_yaml_config(self, filename):
+        full_path = os.path.join(
+            self.env_home, "configs", self.app_name, filename
+        )
+        with open(full_path, "r") as f:
+            return yaml.safe_load(f)
+
+    def get_config(self, filename):
+        if filename.endswith(".json"):
+            return self.get_json_config(filename)
+        if filename.endswith(".yaml"):
+            return self.get_yaml_config(filename)
+        assert False, "Only json or yaml are supported"
+
