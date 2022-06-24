@@ -19,6 +19,10 @@ class AppEnv(object):
     def config_dir(self):
         return os.path.join(self.env_home, "configs", self.app_name)
 
+    @property
+    def pid_dir(self):
+        return os.path.join(self.env_home, "pids", self.app_name)
+
     def get_json_config(self, filename):
         full_path = os.path.join(
             self.env_home, "configs", self.app_name, filename

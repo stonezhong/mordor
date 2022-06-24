@@ -403,6 +403,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                     "config_dir": os.path.join(host.env_home, "configs", app.name),
                     "log_dir"   : os.path.join(host.env_home, "logs", app.name),
                     "data_dir"  : os.path.join(host.env_home, "data", app.name),
+                    "pid_dir"   : os.path.join(host.env_home, "pids", app.name),
                     "env_home"  : host.env_home,
                     "app_name"  : app.name
                 }
@@ -428,6 +429,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
             f"mkdir -p {host.path('logs', app.name)}",
             f"mkdir -p {host.path('configs', app.name)}",
             f"mkdir -p {host.path('data', app.name)}",
+            f"mkdir -p {host.path('pids', app.name)}",
             # remove and re-create the sym link point to the current version of the app
             f"rm -f {host.path('apps', app.name, 'current')}",
             f"ln -s {host.path('apps', app.name, app.manifest.version)} {host.path('apps', app.name, 'current')}",
