@@ -170,8 +170,12 @@ class AppConfig(object):
         return self.app_config["home_dir"]
 
     @property
+    def requirements(self):
+        return self.app_config.get('requirements', 'requirements.txt')
+
+    @property
     def use_python3(self):
-        return self.app_config.get("use_python3", False)
+        return self.app_config.get("use_python3", True)
 
     @property
     def config(self):
@@ -452,7 +456,7 @@ def stage_app_on_host(base_dir, config, app, host, archive_filename, update_venv
                 lines.append(f"{host.python3} -m venv {host.path('venvs', app.venv_name)}")
             else:
                 lines.append(f"{host.virtualenv} {host.path('venvs', app.venv_name)}")
-            lines.append(f"{host.path('bin', 'install_packages.sh')} {host.env_home} {app.name} {app.manifest.version}")
+            lines.append(f"{host.path('bin', 'install_packages.sh')} {host.env_home} {app.name} {app.manifest.version} {app.requirements}")
             lines.append(f"rm -f {host.path('venvs', app.name)}")
             # create a symlink
             lines.append(f"ln -s {host.path('venvs', app.venv_name)} {host.path('venvs', app.name)}")
