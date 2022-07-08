@@ -53,7 +53,8 @@ Here is an example `config.json`:
             "use_python3" : true,
             "config"      : {
                 "foo.json": "copy"
-            }
+            },
+            "requirements": "requirements.txt",
         }
     }
 }
@@ -73,7 +74,8 @@ deployments:
         home_dir: /home/stonezhong/DATA_DISK/projects/mordor/sample
         deploy_to:
             - mordortest
-        use_python3: Yes,
+        use_python3: Yes
+        requirements: requirements.txt
         config:
             - foo.json: copy
 ```
@@ -89,7 +91,8 @@ deployments:
     * `stage` is the name of the stage, usually it is something like `beta`, `prod`, etc, but it can be anything
         * The same application can have as many stages as it can, but each target can only deploy one stage. For example, you cannot deploy both beta and prod stage of the same app to the same target
     * `deploy_to` is a list of the target's name
-    * `use_python3`: set to true if your app need python3
+    * `use_python3`: set to false if your app uses python2, default is `True`
+    * `requirements`: set to the requirements.txt file, if missing, default to `requirements.txt`
     * the `config` section list all the config file you need to deploy to the target
     * when looking for config file xyz, mordor lookup the config with the following order
         * `<base_config_dir>/configs/<app_name>/<stage>/xyz`
