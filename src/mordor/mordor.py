@@ -1,18 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-from typing import Optional
+from typing import Optional, List
 import argparse
-
 import os
 import tempfile
-
-import base64
 import shutil
+import base64
+from enum import Enum
+
 from jinja2 import Template
 
 from .libs import Config, get_config, AppConfig, HostConfig
 
+class ConfigDeployType(Enum):
+    COPY        = "copy"
+    CONVERT     = "convert"
+    TEMPLATE    = "template"
 
 def init_host(base_dir: str, config: Config, host_name: str) -> None:
     """ Initialize a host for mordor
@@ -24,7 +28,7 @@ def init_host(base_dir: str, config: Config, host_name: str) -> None:
     """
     host = config.get_host(host_name)
     if host is None:
-        print("Host {} does not exist".format(host_name))
+        print(f"Host {host_name} does not exist")
         exit(1)
 
     for dir_name in [
@@ -62,7 +66,7 @@ def stage_app(
     app_name: str,
     update_venv: bool,
     config_only: bool,
-    stage: str = "",
+    stage: str = '',
     host_name: Optional[str] = None
 ) -> None:
     """ Stage an application on the fleet for a stage
@@ -106,13 +110,13 @@ def stage_app(
 
 
 def stage_app_on_host(
-        config: Config,
-        app: AppConfig,
-        host: HostConfig,
-        archive_filename: str,
-        update_venv: bool,
-        config_only: bool,
-        stage: str = ""
+    config: Config,
+    app: AppConfig,
+    host: HostConfig,
+    archive_filename: str,
+    update_venv: bool,
+    config_only: bool,
+    stage: str = ''
 ) -> None:
     """ Stage an application on target host
 
@@ -125,9 +129,7 @@ def stage_app_on_host(
     :param stage: application stage, e.g., "beta", "prod", etc.
     :return: Nothing
     """
-    print("stage application \"{}\" for stage \"{}\" on host \"{}\"".format(
-        app.name, app.stage, host.name
-    ))
+    print(f"stage application \"{app.name}\" for stage \"{app.stage}\" on host \"{host.name}\"")
     # allow user to have different configs for different stages
     config_base_dir = os.path.join(config.config_dir, "configs", app.name)
     app_config_dirs = []
@@ -155,13 +157,13 @@ def stage_app_on_host(
     if not config_only:
         shutil.copyfile(archive_filename, os.path.join(local_stage_dir, app.archive_filename))
     for (filename, deploy_type) in app.config.items():
-        if deploy_type == "copy":
+        if deploy_type == ConfigDeployType.COPY.value:
             shutil.copyfile(
                 find_config_filename(filename),
                 os.path.join(local_stage_dir, filename)
             )
             continue
-        if deploy_type == "convert":
+        if deploy_type == ConfigDeployType.CONVERT.value:
             with open(find_config_filename(filename), "r") as f:
                 content = f.read()
             config_dir = os.path.join(host.env_home, "configs", app.name)
@@ -173,7 +175,7 @@ def stage_app_on_host(
             with open(os.path.join(local_stage_dir, filename), "w") as sf:
                 sf.write(content)
             continue
-        if deploy_type == "template":
+        if deploy_type == ConfigDeployType.TEMPLATE.value:
             with open(find_config_filename(filename), "rt") as f:
                 template = Template(f.read())
                 context = {
@@ -245,25 +247,22 @@ def stage_app_on_host(
     print("Done!")
     print("")
 
-    return
-
 
 def run_app(
     config: Config,
     app_name: str,
-    stage="",
+    stage:str = '',
     host_name: Optional[str] = None,
-    cmd: str = ""
+    cmd:str = ""
 ) -> None:
-    """ Run an application on the fleet for a stage
+    """Run an application on the fleet for a stage
 
     :param config: overall config
     :param app_name: application name
-    :param stage: stage
-    :param host_name: if specified, we only run the command on this host, otherwise, we run the command on all hosts for
-    the stage
+    :param stage: application stage, e.g., "beta", "prod", etc.
+    :param host_name: if specified, we only stage to this host, otherwise, we stage to all hosts for the stage
     :param cmd: the command to run
-    :return:
+    :return: Nothing
     """
     app = config.get_app(app_name, stage)
     if app is None:
@@ -287,7 +286,11 @@ def run_app(
         run_app_on_host(app, host, cmd)
 
 
-def run_app_on_host(app: AppConfig, host: HostConfig, cmd: str) -> None:
+def run_app_on_host(
+    app: AppConfig,
+    host: HostConfig,
+    cmd: str
+):
     """ Run an application on target host
 
     :param app: application config
@@ -295,7 +298,6 @@ def run_app_on_host(app: AppConfig, host: HostConfig, cmd: str) -> None:
     :param cmd: command to run
     :return: Nothing
     """
-
     print("running application: \"{}\" on host \"{}\"".format(app.name, host.name))
     print("            command: \"{}\"".format(cmd))
 
@@ -308,8 +310,7 @@ def run_app_on_host(app: AppConfig, host: HostConfig, cmd: str) -> None:
         cmd_to_send
     )
 
-
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description='Mordor deployment tool for python'
     )
@@ -318,11 +319,6 @@ def main():
         choices=['init-host', 'stage', 'run'],
         nargs=1
     )
-
-    # parser.add_argument(
-    #     "-a", "--action", type=str, required=True, help="Specify action",
-    #     choices=['init-host', 'stage', 'run']
-    # )
     parser.add_argument(
         "-o", "--host-name", type=str, required=False, help="destination host"
     )
@@ -379,14 +375,14 @@ def main():
     if action == "init-host":
         if not args.host_name:
             print("--host-name must be specified")
-            return
+            exit(1)
         init_host(base_dir, config, args.host_name)
         return
 
     if action == "stage":
         if not args.app_name:
             print("--app-name must be specified")
-            return
+            exit(1)
         stage_app(
             config, args.app_name, args.update_venv, args.config_only,
             stage=args.stage,
@@ -397,12 +393,11 @@ def main():
     if action == "run":
         run_app(
             config, args.app_name,
-            stage=args.stage,
-            host_name=args.host_name,
-            cmd=args.cmd
+            stage = args.stage,
+            host_name = args.host_name,
+            cmd = args.cmd
         )
         return
-
 
 if __name__ == '__main__':
     main()
