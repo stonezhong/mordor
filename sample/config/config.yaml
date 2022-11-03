@@ -7,7 +7,7 @@ deployments:
     sample_beta:
         name: sample
         stage: beta
-        home_dir: ./src
+        home_dir: sample/src
         deploy_to:
             - localhost
         use_python3: Yes
