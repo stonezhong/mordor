@@ -1,13 +1,13 @@
 hosts:
     gamebox:
-        ssh_host: gamebox
+        ssh_host: localhost
         env_home: $HOME/mordor
         python3: /usr/bin/python3
 deployments:
     sample_beta:
         name: sample
         stage: beta
-        home_dir: /home/stonezhong/DATA_DISK/projects/mordor/sample/src
+        home_dir: sample/src
         deploy_to:
             - gamebox
         use_python3: Yes
