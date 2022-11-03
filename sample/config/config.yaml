@@ -1,5 +1,5 @@
 hosts:
-    gamebox:
+    localhost:
         ssh_host: localhost
         env_home: $HOME/mordor
         python3: /usr/bin/python3
@@ -9,7 +9,7 @@ deployments:
         stage: beta
         home_dir: sample/src
         deploy_to:
-            - gamebox
+            - localhost
         use_python3: Yes
         config:
             foo.json: copy
