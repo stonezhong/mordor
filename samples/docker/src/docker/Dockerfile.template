@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+FROM python:3.11
+
+RUN mkdir -p /home/{{user_name}}
+RUN mkdir -p /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
+RUN groupadd -g 1000 {{user_name}}
+RUN useradd --shell /bin/bash --group {{user_name}} --gid {{user_id}} --home /home/{{user_name}} -u 1000 {{user_name}}
+COPY app/ /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
+COPY setup_venv.sh /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
+COPY run_app.sh /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
+RUN chmod +x /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}/setup_venv.sh
+RUN chmod +x /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}/run_app.sh
+RUN chown -R {{user_name}}:{{group_name}} /home/{{user_name}}
+
+ENV ENV_HOME=/home/{{user_name}}/mordor
+WORKDIR /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
+USER {{user_name}}:{{group_name}}
+
+RUN ./setup_venv.sh
+
+EXPOSE 5000
+CMD ["/bin/bash", "-c", "./run_app.sh"]

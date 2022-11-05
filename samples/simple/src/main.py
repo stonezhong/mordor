@@ -10,7 +10,7 @@ def main():
     print("env_home = {}".format(app_env.env_home))
     print("app_name = {}".format(app_env.app_name))
     template = "Hi {{person}}!"
-    context = {"person": "Mom"}
+    context = {"person": "Peter"}
     print(pystache.render(template, context))
 
     foo_config = app_env.get_json_config("foo.json")

@@ -1,0 +1,10 @@
+hosts:
+    localhost:
+        env_home: $HOME/mordor
+deployments:
+    sample_beta:
+        name: sample
+        stage: beta
+        home_dir: samples/docker/src
+        deploy_to:
+            - localhost

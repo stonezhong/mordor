@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import base64
 from enum import Enum
+import json
 
 from jinja2 import Template
 
@@ -24,11 +25,11 @@ def init_host(base_dir: str, config: Config, host_name: str) -> None:
     :param base_dir:
     :param config:
     :param host_name:
-    :return:
+    :return: Nothing
     """
     host = config.get_host(host_name)
     if host is None:
-        print(f"Host {host_name} does not exist")
+        print(f"Host {host_name} does not exist.")
         exit(1)
 
     for dir_name in [
@@ -82,7 +83,10 @@ def stage_app(
     """
     app = config.get_app(app_name, stage)
     if app is None:
-        print("Application {} with stage {} does not exist".format(app_name, stage))
+        print(f"Application {app_name} with stage {stage} does not exist.")
+        exit(1)
+    if not app.use_python3:
+        print(f"Application {app_name} with stage {stage} does not support python3.")
         exit(1)
 
     # archive the entire app and send it to host
@@ -101,7 +105,7 @@ def stage_app(
     for host_name in deploy_to:
         host = config.get_host(host_name)
         if host is None:
-            print("Host {} does not exist".format(host_name))
+            print(f"Host {host_name} does not exist.")
             exit(1)
 
     for host_name in deploy_to:
@@ -129,7 +133,7 @@ def stage_app_on_host(
     :param stage: application stage, e.g., "beta", "prod", etc.
     :return: Nothing
     """
-    print(f"stage application \"{app.name}\" for stage \"{app.stage}\" on host \"{host.name}\"")
+    print(f"Stage application {app.name} for stage {app.stage} on host {host.name}.")
     # allow user to have different configs for different stages
     config_base_dir = os.path.join(config.config_dir, "configs", app.name)
     app_config_dirs = []
@@ -147,7 +151,7 @@ def stage_app_on_host(
             full_name = os.path.join(prefix, name)
             if os.path.isfile(full_name):
                 return full_name
-        print(f"Config file {name} does not exist!")
+        print(f"Config file {name} does not exist.")
         exit(1)
 
     # creating local staging area for upload file via scp
@@ -156,6 +160,17 @@ def stage_app_on_host(
     os.makedirs(local_stage_dir)
     if not config_only:
         shutil.copyfile(archive_filename, os.path.join(local_stage_dir, app.archive_filename))
+    # generate metadata.json
+    metadata_filename = os.path.join(local_stage_dir, "_deployment.json")
+    with open(metadata_filename, "wt") as f:
+        json.dump(
+            {
+                "host": host.to_json(),
+                "app": app.to_json(),
+            },
+            f,
+            indent=4
+        )
     for (filename, deploy_type) in app.config.items():
         if deploy_type == ConfigDeployType.COPY.value:
             shutil.copyfile(
@@ -217,7 +232,7 @@ def stage_app_on_host(
             f"tar -xzf {host.path('temp', app.name, app.archive_filename)} -C {host.path('apps', app.name, app.manifest.version)}",
         ])
     # move config file from temp dir
-    for filename in app.config.keys():
+    for filename in list(app.config.keys()) + ['_deployment.json']:
         lines.append(f"mv {host.path('temp', app.name, filename)} {host.path('configs', app.name, filename)}")
     if not config_only:
         # finally, let's remove the archive_filename and staging area in temp
@@ -245,6 +260,10 @@ def stage_app_on_host(
 
     host.execute_batch(lines)
     print("Done!")
+
+    if app.manifest.on_stage is not None:
+        run_app_on_host(app, host, app.manifest.on_stage, prefix="    ")
+    print("Done!")
     print("")
 
 
@@ -266,7 +285,10 @@ def run_app(
     """
     app = config.get_app(app_name, stage)
     if app is None:
-        print("Application {} with stage {} does not exist".format(app_name, stage))
+        print(f"Application {app_name} with stage {stage} does not exist.")
+        exit(1)
+    if not app.use_python3:
+        print(f"Application {app_name} with stage {stage} does not support python3.")
         exit(1)
 
     if host_name is not None:
@@ -278,7 +300,7 @@ def run_app(
     for host_name in run_on:
         host = config.get_host(host_name)
         if host is None:
-            print("Host {} does not exist".format(host_name))
+            print(f"Host {host_name} does not exist.")
             exit(1)
 
     for host_name in run_on:
@@ -289,7 +311,8 @@ def run_app(
 def run_app_on_host(
     app: AppConfig,
     host: HostConfig,
-    cmd: str
+    cmd: str,
+    prefix:str = ""
 ):
     """ Run an application on target host
 
@@ -298,8 +321,7 @@ def run_app_on_host(
     :param cmd: command to run
     :return: Nothing
     """
-    print("running application: \"{}\" on host \"{}\"".format(app.name, host.name))
-    print("            command: \"{}\"".format(cmd))
+    print(f"{prefix}Running application {app.name} on host {host.name}, cmd: \"{cmd}\".")
 
     cmd_to_send = base64.b64encode(cmd.encode('utf-8')).decode('utf-8')
 
@@ -312,7 +334,7 @@ def run_app_on_host(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description='Mordor deployment tool for python'
+        description='Mordor deployment tool for python.'
     )
     parser.add_argument(
         "action", type=str, help="Specify action",
@@ -374,14 +396,14 @@ def main() -> None:
 
     if action == "init-host":
         if not args.host_name:
-            print("--host-name must be specified")
+            print("--host-name must be specified.")
             exit(1)
         init_host(base_dir, config, args.host_name)
         return
 
     if action == "stage":
         if not args.app_name:
-            print("--app-name must be specified")
+            print("--app-name must be specified.")
             exit(1)
         stage_app(
             config, args.app_name, args.update_venv, args.config_only,

@@ -31,12 +31,12 @@ class AppConfig:
             raise Exception("Missing manifest file")
 
     @property
-    def stage(self) -> str:
-        return self.app_config.get("stage", "")
-
-    @property
     def name(self) -> str:
         return self.app_config.get("name", self.deployment_name)
+
+    @property
+    def stage(self) -> str:
+        return self.app_config.get("stage", "")
 
     @property
     def home_dir(self) -> str:
@@ -87,3 +87,12 @@ class AppConfig:
         args.extend(files_to_add)
         subprocess.check_call(args)
         return os.path.join(temp_dir, self.archive_filename)
+
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "stage": self.stage,
+            "home_dir": self.home_dir,
+            "deploy_to": self.deploy_to,
+            "manifest": self.manifest.to_json()
+        }
