@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+    volumes:
+      - {{host.env_home}}/data/sample:/home/{{user_name}}/mordor/data/{{app.app_name}}
+      - {{host.env_home}}/configs/sample:/home/{{user_name}}/mordor/configs/{{app.app_name}}
+      - {{host.env_home}}/logs/sample:/home/{{user_name}}/mordor/logs/{{app.app_name}}
+      - {{host.env_home}}/pids/sample:/home/{{user_name}}/mordor/pids/{{app.app_name}}
+  redis:
+    image: "redis:alpine"

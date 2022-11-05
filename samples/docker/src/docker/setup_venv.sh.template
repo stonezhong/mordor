@@ -1,0 +1,6 @@
+#!/bin/sh
+
+mkdir -p /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}
+python -m venv /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}
+. /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}/bin/activate
+python -m pip install -r requirements.txt

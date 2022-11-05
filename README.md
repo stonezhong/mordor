@@ -1,38 +1,46 @@
 # Indexes
 * [Introduction](#introduction)
 * [Developers' guide](#developers-guide)
-* [Config](#config)
-    * [Config directory](#config-directory)
-    * [Config structure](#config-structure)
+* [Configuration](#configuration)
+    * [Configuration directory](#configuration-directory)
+    * [Configuration structure](#configuration-structure)
+        * [Hosts section](#hosts-section)
+        * [Deployments section](#deployments-section)
+    * [Deal with Application Configurations](#deal-with-application-configs)
 * [Sample Commands](#sample-commands)
     * [Init target host](#init-target-host)
     * [Stage application to target](#stage-application-to-target)
     * [Run a command on target](#run-a-command-on-target)
 * [Environment ENV_HOME](#environment-env_home)
 * [Application Structure](#application-structure)
-* [Target host mordor file structure](#target-host-mordor-file-structure)
+* [File Structure on Host](#file-structure-on-host)
 
 # Introduction
 
-Mordor is a tool helps you to deploy your python project.
+Mordor is a tool helps you to deploy your python application.
+
+* 2022-11-05: Support for python 2 has been deprecated.
 
 # Developers' guide
 This is for developers who want to adding features or fix bugs for mordor. Please see [For Developers](for_developers.md)
 
-# Config
+# Configuration
 
-## Config directory
+## Configuration directory
 
-Mordor locates the config directory with the following order:
+Mordor deploys your application using configurations, and configurations are located in a directory.
 
-1) The config directory you specified after `-c` option
-2) Specified by environment variable `MORDOR_CONFIG_DIR`
-3) Uses `~/.mordor`
+Mordor locates the configuration directory with the following order:
 
-* config file could be in yaml format, in such case, filename should be "config.yaml"
-* config file could be in json format, in such case, filename should be "config.json"
+1) You can specify it with `-c` option in command line.
+2) You can specify it with environment variable `MORDOR_CONFIG_DIR`
+3) Fall back to `~/.mordor`
 
-## Config structure
+* You can config mordor using either yaml or json format for your configuration file
+    * For yaml format, you should provide config.yaml in configuration directory.
+    * For json format, you should provide config.json in configuration directory.
+
+## Configuration structure
 Here is an example `config.json`:
 ```json
 {
@@ -40,7 +48,6 @@ Here is an example `config.json`:
         "mordortest": {
             "ssh_host"  : "mordortest",
             "env_home"  : "/root/mordor",
-            "virtualenv": "/usr/bin/virtualenv",
             "python3"   : "/usr/bin/python3"
         }
     },
@@ -80,23 +87,21 @@ deployments:
             - foo.json: copy
 ```
 
-* In `hosts` section, you need to list all your target machine which you want to deploy to.
-    * You need to make sure you can ssh to each machine without entering password, you can config your `~/.ssh/config` if needed
-    * If your target machine support python3, you need to specify python3 location
-    * `env_home` is the root path for mordor, normally you want to point it to a large disk, for example `/mnt/mordor`
-    * `ssh_host` is the name of the host when you do ssh, normally it should match what you have in your `~/.ssh/config` file
-    * `virtualenv` specify the virtualenv command on the target host, only for python2. For python3, we use the `venv` module which is built-in with python3.
-* In `deployments` section, you list all the deployments you want to deploy
-    * `name` is the name of the application, if missing, then the deployment name becomes the application name
+### Hosts section
+* In `hosts` section, you need to list all your hosts which you want to deploy to. The key is the host id, value is the configuration for the host, here are fields for value:
+    * `python3`: Optional, please set python3 interrupter location, if you do not specify, mordor will assume it is `/usr/bin/python3`
+    * `env_home`: Please set your mordor home directory.
+    * `ssh_host` Optional, set your ssh hostname, if you do not specify, it will be the host id. Normally it should match what you have in your `~/.ssh/config` file, You need to make sure you can ssh to each machine without entering password, you can config your `~/.ssh/config` if needed
+
+### Deployments section
+* In `deployments` section, you need to list all the deployments you have, key is the deployment id, value is the configuration for the deployment, here are the fields for value:
+    * `name` is the name of the application, if missing, then the deployment id becomes the application name
     * `stage` is the name of the stage, usually it is something like `beta`, `prod`, etc, but it can be anything
-        * The same application can have as many stages as it can, but each target can only deploy one stage. For example, you cannot deploy both beta and prod stage of the same app to the same target
-    * `deploy_to` is a list of the target's name
+        * The same application can have as many stages as it supports, but each host can only deploy one stage. For example, you cannot deploy both beta and prod stage of the same app to the same host
+    * `deploy_to` is a list of the host ids
     * `use_python3`: set to false if your app uses python2, default is `True`
-    * `requirements`: set to the requirements.txt file, if missing, default to `requirements.txt`
-    * the `config` section list all the config file you need to deploy to the target
-    * when looking for config file xyz, mordor lookup the config with the following order
-        * `<base_config_dir>/configs/<app_name>/<stage>/xyz`
-        * `<base_config_dir>/configs/<app_name>/xyz`
+    * `requirements`: filename for requirements, which specify the python package dependency, default to `requirements.txt`
+    * the `config` section list all the config file you need to deploy to host
     * `stage`: the stage of this deployment, if missing, then stage is ""
 
 ## Deal with application configs
@@ -105,8 +110,8 @@ When mordor looks for a config whose name is `config_name` to deploy on a host, 
 * stage specific directory, in `{base_config_dir}/configs/{app_name}/{stage}/{config_name}`
 * in config directory, in `{base_config_dir}/configs/{app_name}/{config_name}`
 
-We support 3 types of configs:
-* "copy" -- it simply copy the config to the host
+Mordor supports 3 types of configuration:
+* "copy" -- it simply copy the config file to the host
 * "convert" -- the config is a python template string, you can refer the following context:
 ```
 config_dir
@@ -127,19 +132,14 @@ Please visit [here](sample/readme.md) for a working example.
 
 # Sample commands
 ## Init target host
-<details>
-<summary>Initialize target host</summary>
-
+Every host need to be initialized for mordor before you can stage application to it. Here is an example on how to initialize a host:
 ```bash
 # initialize mordor on target host mordortest, using config file from /home/stonezhong/testmordor/.mordor
 mordor -c /home/stonezhong/testmordor/.mordor -a init-host -o mordortest
 ```
-</details>
 
 ## Stage application to target
-<details>
-<summary>Stage application to target</summary>
-
+Here is an example to stage an application to a host and setup the python virtual environment for the application:
 ```bash
 # stage application sample to beta stage
 # the application will be copied to the target machine
@@ -147,32 +147,30 @@ mordor -c /home/stonezhong/testmordor/.mordor -a init-host -o mordortest
 # python virtual environment will be created on target machine
 mordor -c /home/stonezhong/testmordor/.mordor -a stage -p sample -s beta --update-venv
 ```
-</details>
+* In most cases, you just need to do `--update-venv` once, unless you update the requirements.txt, or first time you stage the application.
+* Via application manifest, you can let mordor to trigger an command after the application is staged on a host.
 
 ## Run a command on target
-<details>
-<summary>Run a command on target</summary>
-
 ```bash
 # run command
-# application is "sample", stage is "beta", command is "foo" with option "xyz abc"
-mordor -c /home/stonezhong/testmordor/.mordor -a run -p sample -s beta -cmd foo -co "xyz abc"
+# application is "sample", stage is "beta", command line is "foo xyz abc"
+mordor -c /home/stonezhong/testmordor/.mordor -a run -p sample -s beta -cmd "foo xyz abc"
 ```
-</details>
+
 
 # Application Structure
 
 You can look at the [Sample](https://github.com/stonezhong/mordor/tree/master/sample)
 
 * You need to have a manifest.json file, you normally want to bump the version if you make changes to your application.
-* You need to have a requirements.txt in your application root which tells list of packages you need to install
-* Optionally, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, `dispatch.py` owns the action on the command. For details, see [dispatch.py](https://github.com/stonezhong/mordor/blob/master/sample/dispatch.py) as example.
+* You need to have a requirements.txt in your application root directory which tells list of packages you need to install
+* Optionally, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, `dispatch.py` owns the execution of the command. For details, see [dispatch.py](https://github.com/stonezhong/mordor/blob/master/sample/dispatch.py) as example.
 
 # Command line options
 ```
 mordor \
+  <action> \
   -c <mordor_config_base> \
-  -a <action> \
   -o <target_name> \
   -p <app_name> \
   -s <stage> \
@@ -180,11 +178,11 @@ mordor \
   [--config-only] \
   -cmd="<your command here>"
 
+# action, could be `init-host`, `stage` or `run`
 # -c, optional, you can specify the mordir configration directory location
-# -a, action, could be `init-host`, `stage` or `run`
-# -o, specify the the target machine.
+# -o, specify the the target host id.
 #     for init-host, you must specify this
-#     for stage or run, if missing, then the scope is all the target for the stage
+#     for stage or run, if missing, then the scope is all the host for the stage
 # -p, the application name
 # -s, the stage name, if missing, the stage name is empty string
 # -cmd, the command you want to run when your action is "run"
@@ -195,7 +193,7 @@ mordor \
 # Environment ENV_HOME
 After modor is initialized on target, target will have a environment variable `ENV_HOME`, set to the `env_home` setting from your host setting of your mordor config file.
 
-# Target host mordor file structure
+# File Structure on Host
 ```
 $ENV_HOME
   |
@@ -225,7 +223,9 @@ $ENV_HOME
   |
   +-- pids                                  Directory for pid for each application
   |     |
-  |     +-- <application name>.pid          pid for the latest run of an application
+  |     +-- <application name>              pid directory for the application
+  |             |
+  |             +-- main.pid                An application may have many pid files.
   |
   +-- venvs                                 Home for virtual envs for all application
   |     |

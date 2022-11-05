@@ -21,26 +21,11 @@ class HostConfig:
 
     @property
     def ssh_host(self) -> str:
-        return self.host_config["ssh_host"]
-
-    @property
-    def virtualenv(self) -> Optional[str]:
-        return self.host_config.get("virtualenv")
+        return self.host_config.get("ssh_host", self.name)
 
     @property
     def python3(self) -> Optional[str]:
-        return self.host_config.get("python3")
-
-    @property
-    def ssh_key_filename(self) -> Optional[str]:
-        v = self.host_config.get("ssh_key_filename")
-        if not v:
-            return v
-        return os.path.expanduser(v)
-
-    @property
-    def ssh_username(self) -> Optional[str]:
-        return self.host_config.get("ssh_username")
+        return self.host_config.get("python3", "/usr/bin/python3")
 
     def path(self, *args) -> str:
         return os.path.join(self.env_home, *args)
@@ -57,16 +42,7 @@ class HostConfig:
             f.write(f"exit\n".encode("utf-8"))
             f.seek(0)
 
-            if self.ssh_key_filename:
-                new_args = [
-                    "ssh",
-                    "-i",
-                    self.ssh_key_filename,
-                    "-q",
-                    "{}@{}".format(self.ssh_username, self.ssh_host)
-                ]
-            else:
-                new_args = ["ssh", "-q", self.ssh_host]
+            new_args = ["ssh", "-q", self.ssh_host]
             subprocess.check_call(new_args, stdin=f)
 
     def execute(self, *args) -> None:
@@ -75,17 +51,7 @@ class HostConfig:
         :param args: args for this script
         :return: Nothing
         """
-        if self.ssh_key_filename:
-            new_args = [
-                "ssh",
-                "-i",
-                self.ssh_key_filename,
-                "-t",
-                "-q",
-                "{}@{}".format(self.ssh_username, self.ssh_host)
-            ]
-        else:
-            new_args = ["ssh", "-q", "-t", self.ssh_host]
+        new_args = ["ssh", "-q", "-t", self.ssh_host]
         new_args.extend(args)
         subprocess.check_call(new_args)
 
@@ -95,15 +61,7 @@ class HostConfig:
         :param args: args for this script
         :return: tuple, script stdout as string, and script exit code as integer
         """
-        if self.ssh_key_filename:
-            new_args = [
-                "ssh",
-                "-i",
-                self.ssh_key_filename,
-                "{}@{}".format(self.ssh_username, self.ssh_host)
-            ]
-        else:
-            new_args = ["ssh", self.ssh_host]
+        new_args = ["ssh", self.ssh_host]
         new_args.extend(args)
         p = subprocess.Popen(new_args, stdout=subprocess.PIPE)
         _ = p.wait()
@@ -117,22 +75,11 @@ class HostConfig:
         :param remote_path: the destination path
         :return: Nothing
         """
-        if self.ssh_key_filename:
-            new_args = [
-                "scp", "-r", "-q", "-i", self.ssh_key_filename,
-                local_path,
-                "{}@{}:{}".format(
-                    self.ssh_username,
-                    self.ssh_host, remote_path
-                )
-            ]
-        else:
-            new_args = [
-                "scp", "-r", "-q",
-                local_path,
-                "{}:{}".format(self.ssh_host, remote_path)
-            ]
-
+        new_args = [
+            "scp", "-r", "-q",
+            local_path,
+            "{}:{}".format(self.ssh_host, remote_path)
+        ]
         subprocess.check_call(new_args)
 
     def upload(self, local_path: str, remote_path: str) -> None:
@@ -142,20 +89,16 @@ class HostConfig:
         :param remote_path: the destination path
         :return: Nothing
         """
-        if self.ssh_key_filename:
-            new_args = [
-                "scp", "-q", "-i", self.ssh_key_filename,
-                local_path,
-                "{}@{}:{}".format(
-                    self.ssh_username,
-                    self.ssh_host, remote_path
-                )
-            ]
-        else:
-            new_args = [
-                "scp", "-q",
-                local_path,
-                "{}:{}".format(self.ssh_host, remote_path)
-            ]
-
+        new_args = [
+            "scp", "-q",
+            local_path,
+            "{}:{}".format(self.ssh_host, remote_path)
+        ]
         subprocess.check_call(new_args)
+
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "env_home": self.env_home,
+            "ssh_host": self.ssh_host,
+        }

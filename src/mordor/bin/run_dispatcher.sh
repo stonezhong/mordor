@@ -4,6 +4,7 @@
 # $2: app name
 # $3: cmd
 
+export ENV_HOME=$1
 source $1/venvs/$2/bin/activate
 cd $1/apps/$2/current
 
