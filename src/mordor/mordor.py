@@ -4,6 +4,7 @@
 from typing import Optional, List
 import argparse
 import os
+import sys
 import tempfile
 import shutil
 import base64
@@ -19,19 +20,28 @@ class ConfigDeployType(Enum):
     CONVERT     = "convert"
     TEMPLATE    = "template"
 
-def init_host(base_dir: str, config: Config, host_name: str) -> None:
+def init_hosts(base_dir: str, config: Config, host_names: List[str]) -> None:
+    host_dict = {}
+    for host_name in host_names:
+        host = config.get_host(host_name)
+        if host is None:
+            print(f"Host {host_name} does not exist.")
+            sys.exit(1)
+        else:
+            host_dict[host_name] = host
+
+    for host_name in host_names:
+        init_host(base_dir, config, host_dict[host_name])
+
+
+def init_host(base_dir: str, config: Config, host: HostConfig) -> None:
     """ Initialize a host for mordor
 
     :param base_dir:
     :param config:
-    :param host_name:
+    :param host:
     :return: Nothing
     """
-    host = config.get_host(host_name)
-    if host is None:
-        print(f"Host {host_name} does not exist.")
-        exit(1)
-
     for dir_name in [
         host.env_home,
         host.path("bin"),
@@ -68,7 +78,7 @@ def stage_app(
     update_venv: bool,
     config_only: bool,
     stage: str = '',
-    host_name: Optional[str] = None
+    host_names: Optional[List[str]] = None
 ) -> None:
     """ Stage an application on the fleet for a stage
 
@@ -78,16 +88,16 @@ def stage_app(
     :param update_venv: create virtual environment or not
     :param config_only: update config only or not
     :param stage: application stage, e.g., "beta", "prod", etc.
-    :param host_name: if specified, we only stage to this host, otherwise, we stage to all hosts for the stage
+    :param host_names: if specified, we only stage to this list of hosts, otherwise, we stage to all hosts for the stage
     :return: Nothing
     """
     app = config.get_app(app_name, stage)
     if app is None:
         print(f"Application {app_name} with stage {stage} does not exist.")
-        exit(1)
+        sys.exit(1)
     if not app.use_python3:
         print(f"Application {app_name} with stage {stage} does not support python3.")
-        exit(1)
+        sys.exit(1)
 
     # archive the entire app and send it to host
     # tar -czf /tmp/a.tar.gz -C $PWD *
@@ -96,8 +106,8 @@ def stage_app(
     else:
         archive_filename = None
 
-    if host_name is not None:
-        deploy_to = [host_name]
+    if host_names is not None:
+        deploy_to = host_names
     else:
         deploy_to = app.deploy_to
 
@@ -106,7 +116,7 @@ def stage_app(
         host = config.get_host(host_name)
         if host is None:
             print(f"Host {host_name} does not exist.")
-            exit(1)
+            sys.exit(1)
 
     for host_name in deploy_to:
         host = config.get_host(host_name)
@@ -152,7 +162,7 @@ def stage_app_on_host(
             if os.path.isfile(full_name):
                 return full_name
         print(f"Config file {name} does not exist.")
-        exit(1)
+        sys.exit(1)
 
     # creating local staging area for upload file via scp
     temp_dir = tempfile.mkdtemp()
@@ -271,7 +281,7 @@ def run_app(
     config: Config,
     app_name: str,
     stage:str = '',
-    host_name: Optional[str] = None,
+    host_names: Optional[List[str]] = None,
     cmd:str = ""
 ) -> None:
     """Run an application on the fleet for a stage
@@ -279,20 +289,20 @@ def run_app(
     :param config: overall config
     :param app_name: application name
     :param stage: application stage, e.g., "beta", "prod", etc.
-    :param host_name: if specified, we only stage to this host, otherwise, we stage to all hosts for the stage
+    :param host_names: if specified, we only stage to this list of hosts, otherwise, we stage to all hosts for the stage
     :param cmd: the command to run
     :return: Nothing
     """
     app = config.get_app(app_name, stage)
     if app is None:
         print(f"Application {app_name} with stage {stage} does not exist.")
-        exit(1)
+        sys.exit(1)
     if not app.use_python3:
         print(f"Application {app_name} with stage {stage} does not support python3.")
-        exit(1)
+        sys.exit(1)
 
-    if host_name is not None:
-        run_on = [host_name]
+    if host_names is not None:
+        run_on = [host_names]
     else:
         run_on = app.deploy_to
 
@@ -301,7 +311,7 @@ def run_app(
         host = config.get_host(host_name)
         if host is None:
             print(f"Host {host_name} does not exist.")
-            exit(1)
+            sys.exit(1)
 
     for host_name in run_on:
         host = config.get_host(host_name)
@@ -342,7 +352,8 @@ def main() -> None:
         nargs=1
     )
     parser.add_argument(
-        "-o", "--host-name", type=str, required=False, help="destination host"
+        "-o", "--host-names", type=str, default=None, required=False, nargs='+',
+        help="destination hosts"
     )
     parser.add_argument(
         "-p", "--app-name", type=str, required=False, help="application name"
@@ -375,7 +386,7 @@ def main() -> None:
     # validate options
     if args.update_venv and args.config_only:
         print("You cannot specify both --update-venv and --config-only")
-        exit(1)
+        sys.exit(1)
 
     base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -390,25 +401,25 @@ def main() -> None:
             break
     if filename is None:
         print(f"Missing config file in directory {args.config_dir}")
-        exit(1)
+        sys.exit(1)
 
     config = Config(get_config(filename), config_dir)
 
     if action == "init-host":
         if not args.host_name:
-            print("--host-name must be specified.")
-            exit(1)
-        init_host(base_dir, config, args.host_name)
+            print("--host-names must be specified.")
+            sys.exit(1)
+        init_host(base_dir, config, args.host_names)
         return
 
     if action == "stage":
         if not args.app_name:
             print("--app-name must be specified.")
-            exit(1)
+            sys.exit(1)
         stage_app(
             config, args.app_name, args.update_venv, args.config_only,
             stage=args.stage,
-            host_name=args.host_name
+            host_names=args.host_names
         )
         return
 
@@ -416,7 +427,7 @@ def main() -> None:
         run_app(
             config, args.app_name,
             stage = args.stage,
-            host_name = args.host_name,
+            host_names = args.host_names,
             cmd = args.cmd
         )
         return
