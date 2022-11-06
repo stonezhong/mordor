@@ -1,6 +1,7 @@
 # Indexes
 * [Introduction](#introduction)
 * [Developers' guide](#developers-guide)
+* [Install Mordor](#install-mordor)
 * [Configuration](#configuration)
     * [Configuration directory](#configuration-directory)
     * [Configuration structure](#configuration-structure)
@@ -23,6 +24,18 @@ Mordor is a tool helps you to deploy your python application.
 
 # Developers' guide
 This is for developers who want to adding features or fix bugs for mordor. Please see [For Developers](for_developers.md)
+
+# Install mordor
+Here is an example to install mordor from github
+```bash
+mkdir ~/.mordor_venv
+python3 -m venv ~/.mordor_venv
+source ~/.mordor_venv/bin/activate
+python -m pip install pip setuptools --upgrade
+python -m pip install wheel
+python -m pip install git+https://github.com/stonezhong/mordor.git@master
+# You can also do "python -m pip install mordor2"
+```
 
 # Configuration
 
@@ -128,7 +141,7 @@ env_home
 app_name
 ```
 
-Please visit [here](sample/readme.md) for a working example.
+Please visit [here](samples/) for a working examples.
 
 # Sample commands
 ## Init target host
