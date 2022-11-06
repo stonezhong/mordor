@@ -9,7 +9,7 @@
         * [Deployments section](#deployments-section)
     * [Deal with Application Configurations](#deal-with-application-configs)
 * [Sample Commands](#sample-commands)
-    * [Init target host](#init-target-host)
+    * [Initialize host](#initialize-host)
     * [Stage application](#stage-application)
     * [Run a command](#run-a-command)
 * Examples
@@ -148,11 +148,11 @@ app_name    : the name of the application
 Please visit [here](samples/) for a working examples.
 
 # Sample commands
-## Init target host
+## Initialize host
 Every host need to be initialized for mordor before you can stage application to it. Here is an example on how to initialize a host:
 ```bash
-# initialize mordor on target host mordortest, using config file from /home/stonezhong/testmordor/.mordor
-mordor -c samples/simple/config -a init-host -o mordortest
+# initialize mordor on host mordortest, using config file from samples/simple/config
+mordor init-host -c samples/simple/config -o mordortest
 ```
 
 ## Stage application
@@ -164,7 +164,7 @@ Here is an example to stage an application and setup the python virtual environm
 #     the application will be copied to
 #     configuration will be copied to
 #     python virtual environment will be created
-mordor -c samples/simple/config -a stage -p sample -s beta --update-venv
+mordor stage -c samples/simple/config -p sample -s beta --update-venv
 ```
 * In most cases, you just need to do `--update-venv` once, unless you update the requirements.txt, or first time you stage the application.
 * Via application manifest, you can let mordor to trigger an command after the application is staged on a host, through the `on_stage` option, check the sample [here](samples/docker/src/manifest.yaml)
@@ -175,7 +175,7 @@ mordor allows you to run a commnad for an application, either on all host belong
 ```bash
 # run command
 # application is "sample", stage is "beta", command line is "foo xyz abc"
-mordor -c samples/simple/config -a run -p sample -s beta -cmd "foo xyz abc"
+mordor run -c samples/simple/config -p sample -s beta -cmd "foo xyz abc"
 ```
 
 
