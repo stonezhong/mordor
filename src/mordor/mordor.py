@@ -42,6 +42,8 @@ def init_host(base_dir: str, config: Config, host: HostConfig) -> None:
     :param host:
     :return: Nothing
     """
+
+    print(f"Initialize mordor for host {host.name} ...")
     for dir_name in [
         host.env_home,
         host.path("bin"),
@@ -53,7 +55,7 @@ def init_host(base_dir: str, config: Config, host: HostConfig) -> None:
         host.path("data"),
         host.path("temp"),
     ]:
-        host.execute("mkdir", "-vp", dir_name)
+        host.execute("mkdir", "-p", dir_name)
 
     cmds = [
         "install_packages.sh",
@@ -70,6 +72,7 @@ def init_host(base_dir: str, config: Config, host: HostConfig) -> None:
             host.execute("chmod", "+x", host.path("bin", cmd))
 
     host.execute(host.path("bin", "init_host.sh"), host.env_home)
+    print(f"Done!")
 
 
 def stage_app(
@@ -406,10 +409,10 @@ def main() -> None:
     config = Config(get_config(filename), config_dir)
 
     if action == "init-host":
-        if not args.host_name:
+        if not args.host_names:
             print("--host-names must be specified.")
             sys.exit(1)
-        init_host(base_dir, config, args.host_names)
+        init_hosts(base_dir, config, args.host_names)
         return
 
     if action == "stage":
