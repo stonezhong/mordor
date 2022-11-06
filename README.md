@@ -175,7 +175,7 @@ mordor allows you to run a commnad for an application, either on all host belong
 ```bash
 # run command
 # application is "sample", stage is "beta", command line is "foo xyz abc"
-mordor run -c samples/simple/config -p sample -s beta -cmd "foo xyz abc"
+mordor run -c samples/simple/config -p sample -s beta --cmd "foo xyz abc"
 ```
 
 
@@ -192,12 +192,12 @@ You can look at the [Samples](https://github.com/stonezhong/mordor/tree/master/s
 mordor \
   <action> \
   -c <mordor_config_base> \
-  -o <target_name> \
+  -o <host_id> \
   -p <app_name> \
   -s <stage> \
   [--update-venv] \
   [--config-only] \
-  -cmd="<your command here>"
+  --cmd="<your command here>"
 
 # action, could be `init-host`, `stage` or `run`
 # -c, optional, you can specify the mordir configration directory location
@@ -206,7 +206,7 @@ mordor \
 #     for stage or run, if missing, then the scope is all the host for the stage
 # -p, the application name
 # -s, the stage name, if missing, the stage name is empty string
-# -cmd, the command you want to run when your action is "run"
+# --cmd, the command you want to run when your action is "run"
 # --update-venv, optional, when specified, mordor will update python virtual environment for the app
 # --config-only, optional, when specified, mordor only update the application config.
 ```
