@@ -10,8 +10,11 @@
     * [Deal with Application Configurations](#deal-with-application-configs)
 * [Sample Commands](#sample-commands)
     * [Init target host](#init-target-host)
-    * [Stage application to target](#stage-application-to-target)
-    * [Run a command on target](#run-a-command-on-target)
+    * [Stage application](#stage-application)
+    * [Run a command](#run-a-command)
+* Examples
+    ** [Simple example](https://github.com/stonezhong/mordor/tree/master/samples/simple)
+    ** [Docker example](https://github.com/stonezhong/mordor/tree/master/samples/docekr)
 * [Environment ENV_HOME](#environment-env_home)
 * [Application Structure](#application-structure)
 * [File Structure on Host](#file-structure-on-host)
@@ -109,13 +112,12 @@ deployments:
 ### Deployments section
 * In `deployments` section, you need to list all the deployments you have, key is the deployment id, value is the configuration for the deployment, here are the fields for value:
     * `name` is the name of the application, if missing, then the deployment id becomes the application name
-    * `stage` is the name of the stage, usually it is something like `beta`, `prod`, etc, but it can be anything
-        * The same application can have as many stages as it supports, but each host can only deploy one stage. For example, you cannot deploy both beta and prod stage of the same app to the same host
+    * `stage` is the name of the stage, usually it is something like `beta`, `prod`, etc, but it can be anything, if missing, default to empty string
+        * The same application can have as many stages as it supports, but each host can only deploy one stage. For example, you cannot deploy both beta and prod stage of the same application to the same host
     * `deploy_to` is a list of the host ids
-    * `use_python3`: set to false if your app uses python2, default is `True`
+    * `use_python3`: Must be true, otherwise, mordor will not deploy your application, default value is `True`.
     * `requirements`: filename for requirements, which specify the python package dependency, default to `requirements.txt`
     * the `config` section list all the config file you need to deploy to host
-    * `stage`: the stage of this deployment, if missing, then stage is ""
 
 ## Deal with application configs
 When mordor looks for a config whose name is `config_name` to deploy on a host, it looks for it in the following order:
@@ -123,22 +125,24 @@ When mordor looks for a config whose name is `config_name` to deploy on a host, 
 * stage specific directory, in `{base_config_dir}/configs/{app_name}/{stage}/{config_name}`
 * in config directory, in `{base_config_dir}/configs/{app_name}/{config_name}`
 
-Mordor supports 3 types of configuration:
+<b>This allows you to override config at stage level or host level.</b>
+
+Mordor supports 3 types of config files:
 * "copy" -- it simply copy the config file to the host
-* "convert" -- the config is a python template string, you can refer the following context:
+* "convert" -- the config is a python template string, you can use the following context variables:
 ```
-config_dir
-env_home
-app_name
+config_dir: the application config directory on the host for the application
+env_home  : the mordor home directory on the host
+app_name  : the name of the application
 ```
-* "template" -- the config is a jinja template string, you can refer the following context:
+* "template" -- the config is a jinja template string, you can use the following context variables:
 ```
-host_name
-config_dir
-log_dir
-data_dir
-env_home
-app_name
+host_name   : the host id
+config_dir  : the application config directory on the host for the application
+log_dir     : the log directory on the host for the application
+data_dir    : the data directory on the host for the application
+env_home    : the mordor home directory on the host
+app_name    : the name of the application
 ```
 
 Please visit [here](samples/) for a working examples.
@@ -148,36 +152,40 @@ Please visit [here](samples/) for a working examples.
 Every host need to be initialized for mordor before you can stage application to it. Here is an example on how to initialize a host:
 ```bash
 # initialize mordor on target host mordortest, using config file from /home/stonezhong/testmordor/.mordor
-mordor -c /home/stonezhong/testmordor/.mordor -a init-host -o mordortest
+mordor -c samples/simple/config -a init-host -o mordortest
 ```
 
-## Stage application to target
-Here is an example to stage an application to a host and setup the python virtual environment for the application:
+## Stage application
+mordor allows you to stage application to all host belongs to a stage, or you can cherry pick host with -o options.
+Here is an example to stage an application and setup the python virtual environment for the application on all the host for a given stage:
 ```bash
-# stage application sample to beta stage
-# the application will be copied to the target machine
-# configuration will be copied to the target machine
-# python virtual environment will be created on target machine
-mordor -c /home/stonezhong/testmordor/.mordor -a stage -p sample -s beta --update-venv
+# stage application "sample" to "beta" stage
+# On all the host machine belongs to the "beta" stage
+#     the application will be copied to
+#     configuration will be copied to
+#     python virtual environment will be created
+mordor -c samples/simple/config -a stage -p sample -s beta --update-venv
 ```
 * In most cases, you just need to do `--update-venv` once, unless you update the requirements.txt, or first time you stage the application.
-* Via application manifest, you can let mordor to trigger an command after the application is staged on a host.
+* Via application manifest, you can let mordor to trigger an command after the application is staged on a host, through the `on_stage` option, check the sample [here](samples/docker/src/manifest.yaml)
 
-## Run a command on target
+## Run a command
+mordor allows you to run a commnad for an application, either on all host belongs to a stage or you can cherry pick host, your command is handled by dispatch.py in your application root directory.
+
 ```bash
 # run command
 # application is "sample", stage is "beta", command line is "foo xyz abc"
-mordor -c /home/stonezhong/testmordor/.mordor -a run -p sample -s beta -cmd "foo xyz abc"
+mordor -c samples/simple/config -a run -p sample -s beta -cmd "foo xyz abc"
 ```
 
 
 # Application Structure
 
-You can look at the [Sample](https://github.com/stonezhong/mordor/tree/master/sample)
+You can look at the [Samples](https://github.com/stonezhong/mordor/tree/master/samples)
 
 * You need to have a manifest.json file, you normally want to bump the version if you make changes to your application.
 * You need to have a requirements.txt in your application root directory which tells list of packages you need to install
-* Optionally, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, `dispatch.py` owns the execution of the command. For details, see [dispatch.py](https://github.com/stonezhong/mordor/blob/master/sample/dispatch.py) as example.
+* Optionally, if you want to support running remote command, you need to have a `dispatch.py`. When you run `mordor -a run ...`, `dispatch.py` owns the execution of the command. For details, see [dispatch.py](https://github.com/stonezhong/mordor/blob/master/samples/docker/src/dispatch.py) as example.
 
 # Command line options
 ```
@@ -193,7 +201,7 @@ mordor \
 
 # action, could be `init-host`, `stage` or `run`
 # -c, optional, you can specify the mordir configration directory location
-# -o, specify the the target host id.
+# -o, specify the the host id.
 #     for init-host, you must specify this
 #     for stage or run, if missing, then the scope is all the host for the stage
 # -p, the application name
