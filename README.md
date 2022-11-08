@@ -14,7 +14,7 @@
     * [Run a command](#run-a-command)
 * Examples
     * [Simple example](https://github.com/stonezhong/mordor/tree/master/samples/simple)
-    * [Docker example](https://github.com/stonezhong/mordor/tree/master/samples/docekr)
+    * [Docker example](https://github.com/stonezhong/mordor/tree/master/samples/docker)
 * [Environment ENV_HOME](#environment-env_home)
 * [Application Structure](#application-structure)
 * [File Structure on Host](#file-structure-on-host)
