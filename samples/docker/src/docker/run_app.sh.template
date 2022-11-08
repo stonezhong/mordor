@@ -3,5 +3,5 @@
 export FLASK_APP=app.py
 export FLASK_RUN_HOST=0.0.0.0
 
-. /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}/bin/activate
+. {{docker_app_env.venv_dir}}/bin/activate
 flask run

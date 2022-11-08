@@ -1,20 +1,25 @@
 # syntax=docker/dockerfile:1
 FROM python:3.11
 
-RUN mkdir -p /home/{{user_name}}
-RUN mkdir -p /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
-RUN groupadd -g 1000 {{user_name}}
-RUN useradd --shell /bin/bash --group {{user_name}} --gid {{user_id}} --home /home/{{user_name}} -u 1000 {{user_name}}
-COPY app/ /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
-COPY setup_venv.sh /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
-COPY run_app.sh /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
-RUN chmod +x /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}/setup_venv.sh
-RUN chmod +x /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}/run_app.sh
-RUN chown -R {{user_name}}:{{group_name}} /home/{{user_name}}
+RUN mkdir -p {{docker_app_env.app_dir}}
+RUN groupadd -g {{docker.group_id}} {{docker.group_name}}
+RUN useradd \
+    --shell /bin/bash \
+    --group {{docker.group_name}} \
+    --gid {{docker.group_id}} \
+    --home {{docker.user_home_dir}} \
+    -u {{docker.user_id}} \
+    {{docker.user_name}}
+COPY app/ {{docker_app_env.app_dir}}
+COPY setup_venv.sh {{docker_app_env.app_dir}}
+COPY run_app.sh {{docker_app_env.app_dir}}
+RUN chmod +x {{docker_app_env.app_dir}}/setup_venv.sh
+RUN chmod +x {{docker_app_env.app_dir}}/run_app.sh
+RUN chown -R {{docker.user_name}}:{{docker.group_name}} {{docker.user_home_dir}}
 
-ENV ENV_HOME=/home/{{user_name}}/mordor
-WORKDIR /home/{{user_name}}/mordor/apps/{{app.name}}/{{app.manifest.version}}
-USER {{user_name}}:{{group_name}}
+ENV ENV_HOME={{docker_user_home_dir}}
+WORKDIR {{docker_app_env.app_dir}}
+USER {{docker.user_name}}:{{docker.group_name}}
 
 RUN ./setup_venv.sh
 

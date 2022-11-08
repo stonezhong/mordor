@@ -1,6 +1,8 @@
 #!/bin/sh
 
-mkdir -p /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}
-python -m venv /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}
-. /home/{{user_name}}/mordor/venvs/{{app.name}}-{{app.manifest.version}}/bin/activate
+mkdir -p {{docker_app_env.venv_dir}}
+python -m venv {{docker_app_env.venv_dir}}
+. {{docker_app_env.venv_dir}}/bin/activate
+python -m pip install pip setuptools --upgrade
+python -m pip install wheel
 python -m pip install -r requirements.txt

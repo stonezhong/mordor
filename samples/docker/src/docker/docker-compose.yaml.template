@@ -5,9 +5,9 @@ services:
     ports:
       - "8000:5000"
     volumes:
-      - {{host.env_home}}/data/sample:/home/{{user_name}}/mordor/data/{{app.app_name}}
-      - {{host.env_home}}/configs/sample:/home/{{user_name}}/mordor/configs/{{app.app_name}}
-      - {{host.env_home}}/logs/sample:/home/{{user_name}}/mordor/logs/{{app.app_name}}
-      - {{host.env_home}}/pids/sample:/home/{{user_name}}/mordor/pids/{{app.app_name}}
+      - {{app_env.data_dir}}:{{docker_app_env.data_dir}}
+      - {{app_env.config_dir}}:{{docker_app_env.config_dir}}
+      - {{app_env.log_dir}}:{{docker_app_env.log_dir}}
+      - {{app_env.pid_dir}}:{{docker_app_env.pid_dir}}
   redis:
     image: "redis:alpine"
