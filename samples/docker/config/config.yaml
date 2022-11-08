@@ -8,3 +8,5 @@ deployments:
         home_dir: samples/docker/src
         deploy_to:
             - localhost
+        config:
+            docker.json: copy

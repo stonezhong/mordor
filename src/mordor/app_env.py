@@ -5,16 +5,37 @@ import glob
 import shutil
 import importlib
 from copy import deepcopy
+from typing import Optional
 from jinja2 import Template
+from .libs.tools import get_config
+from .libs.app_manifest import AppManifest
 
 class AppEnv:
-    def __init__(self, app_name: str):
-        self.env_home = os.environ["ENV_HOME"]
+    def __init__(self, app_name: str, version:Optional[str] = None, env_home:Optional[str] = None):
+        self.env_home = os.environ["ENV_HOME"] if env_home is None else env_home
         self.app_name = app_name
+        self._manifest = None
+
+        if version is None:
+            app_base_dir = os.path.join(self.env_home, "apps", self.app_name, "current")
+            manifest_filenames = [
+                os.path.join(app_base_dir, "manifest.yaml"),
+                os.path.join(app_base_dir, "manifest.json"),
+            ]
+            app_manifest = None
+            for manifest_filename in manifest_filenames:
+                if os.path.isfile(manifest_filename):
+                    app_manifest = AppManifest(get_config(manifest_filename))
+                    break
+            if app_manifest is None:
+                raise Exception("Missing manifest")
+            self.version = app_manifest.version
+        else:
+            self.version = version
 
     @property
     def app_dir(self) -> str:
-        return os.path.join(self.env_home, "apps", self.app_name, "current")
+        return os.path.join(self.env_home, "apps", self.app_name, self.version)
 
     @property
     def log_dir(self) -> str:
@@ -31,6 +52,10 @@ class AppEnv:
     @property
     def pid_dir(self) -> str:
         return os.path.join(self.env_home, "pids", self.app_name)
+
+    @property
+    def venv_dir(self) -> str:
+        return os.path.join(self.env_home, "venvs", f"{self.app_name}-{self.version}")
 
     def get_json_config(self, filename: str):
         full_path = os.path.join(
