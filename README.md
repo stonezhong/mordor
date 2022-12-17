@@ -24,6 +24,7 @@
 Mordor is a tool helps you to deploy your python application.
 
 * 2022-11-05: Support for python 2 has been deprecated.
+* 2022-12-16: Add SCP_OPTIONS to support MacOS Ventura 13.1 to use SCP instead of SFTP protocol, you can do `export SCP_OPTIONS="-O"`
 
 # Developers' guide
 This is for developers who want to adding features or fix bugs for mordor. Please see [For Developers](for_developers.md)

@@ -75,8 +75,9 @@ class HostConfig:
         :param remote_path: the destination path
         :return: Nothing
         """
-        new_args = [
-            "scp", "-r", "-q",
+        scp_options = os.environ.get('SCP_OPTIONS','').strip()
+        options = scp_options.split(" ") if scp_options else []
+        new_args = ["scp"] + options + ["-r", "-q",
             local_path,
             "{}:{}".format(self.ssh_host, remote_path)
         ]
@@ -89,8 +90,9 @@ class HostConfig:
         :param remote_path: the destination path
         :return: Nothing
         """
-        new_args = [
-            "scp", "-q",
+        scp_options = os.environ.get('SCP_OPTIONS','').strip()
+        options = scp_options.split(" ") if scp_options else []
+        new_args = ["scp"] + options + ["-q",
             local_path,
             "{}:{}".format(self.ssh_host, remote_path)
         ]
