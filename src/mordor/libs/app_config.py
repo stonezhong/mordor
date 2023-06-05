@@ -3,6 +3,7 @@ import subprocess
 import os
 import glob
 import tempfile
+import platform
 
 from .app_manifest import AppManifest
 from .tools import get_config
@@ -76,12 +77,17 @@ class AppConfig:
         for exclude_dir in self.manifest.exclude_dirs:
             exclude_opts.extend(["--exclude", exclude_dir])
 
-        args = ['tar'] + exclude_opts + [
-            '-czf',
-            os.path.join(temp_dir, self.archive_filename),
-            "-C",
-            self.home_dir
-        ]
+        # macos might generate ._files, use --disable-copyfile to disable it
+        args = ['tar', '--no-xattrs']
+        if platform.system() == "Darwin":
+            args.append("--disable-copyfile")
+        args += exclude_opts + \
+            [
+                '-czf',
+                os.path.join(temp_dir, self.archive_filename),
+                "-C",
+                self.home_dir
+            ]
         files_to_add = glob.glob("{}/*".format(self.home_dir))
         files_to_add = [item[len(self.home_dir) + 1:] for item in files_to_add]
         args.extend(files_to_add)
